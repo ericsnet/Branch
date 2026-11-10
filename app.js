@@ -24,7 +24,7 @@ function id(){return "n"+Math.random().toString(36).slice(2,9)}
 function find(n,key){if(n.id===key)return n;for(const c of n.children){const r=find(c,key);if(r)return r}return null}
 function parentOf(n,key){for(const c of n.children){if(c.id===key)return n;const r=parentOf(c,key);if(r)return r}return null}
 function probability(n){if(n.method==="data"&&n.total>0)return Math.max(0,Math.min(100,100*n.favourable/n.total));return n.p===null?null:Number(n.p)}
-function allPaths(n=tree,path=[],prob=1){if(!n.children.length)return [{labels:path.concat(n.label),prob}];let out=[];for(const c of n.children){let p=probability(c);out=out.concat(allPaths(c,path.concat(n.label),p===null?null:prob===null?null:prob*p/100))}return out}
+function allPaths(n=tree,path=[],prob=100){if(!n.children.length)return [{labels:path.concat(n.label),prob}];let out=[];for(const c of n.children){let p=probability(c);out=out.concat(allPaths(c,path.concat(n.label),p===null?null:prob===null?null:prob*p/100))}return out}
 function walk(n,fn){fn(n);n.children.forEach(c=>walk(c,fn))}
 function render(){ $("projectName").value=projectName;drawTree();renderInspector();renderValidation();$("branchCount").textContent=countNodes(tree)-1+" "+t("branches");if(view==="stats")renderStats(); }
 function countNodes(n){return 1+n.children.reduce((s,c)=>s+countNodes(c),0)}
