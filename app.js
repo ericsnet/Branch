@@ -5,6 +5,16 @@ const translations = {
  en:{project:"Project",horizontal:"Horizontal",vertical:"Vertical",save:"Save",export:"Export",workspace:"WORKSPACE",editor:"Editor",statistics:"Statistics",simulation:"Simulation",tree:"TREE",localSaved:"Saved locally",addBranch:"Add branch",templates:"Templates",import:"Import project",quickTip:"Quick tip",tipText:"Branch probabilities from the same node should add up to 100%.",probabilityWorkspace:"PROBABILITY WORKSPACE",treeEditor:"Tree editor",pageSubtitle:"Build scenarios, assign probabilities and understand every outcome.",share:"Share",liveCalculation:"Live calculations",fitView:"Fit view",clear:"Clear",canvasHint:"Select a node to edit it · Press + to add branches",selection:"SELECTION",nodeProperties:"Node properties",selectNode:"Select a node or branch in the tree.",label:"Label",probability:"Probability",inputMethod:"Method",favourable:"Favourable",total:"Total cases",notes:"Notes",color:"Color",duplicate:"Duplicate",delete:"Delete",qualityCheck:"QUALITY CHECK",validation:"Validation",outcomes:"OUTCOMES",finalOutcomes:"Final outcomes",path:"Path",jointProbability:"Joint probability",conditional:"Conditional",monteCarlo:"MONTE CARLO",runSimulation:"Run simulation",simDescription:"Repeat the experiment to compare observed frequencies with theoretical probabilities.",repetitions:"Number of repetitions",run:"Run simulation",results:"RESULTS",simulationResults:"Simulation results",runToSee:"Run a simulation to see results.",localOnly:"Your projects stay in this browser.",saved:"Project saved",added:"Branch added",invalidSum:"Branch probabilities add up to",missing:"Some probabilities are undefined.",over:"The sum exceeds 100%.",under:"The sum is below 100%.",allGood:"No inconsistencies detected in the current data.",exportTitle:"Export project",exportJson:"JSON project",exportSvg:"SVG diagram",exportPng:"PNG image",exportPdf:"PDF / Print",shareTitle:"Share tree",shareFile:"Download shareable file",shareLink:"Copy data link",templatesTitle:"Templates",coin:"Two coin tosses",weather:"Weather forecast",medical:"Hypothetical test",empty:"Empty tree",imported:"Project imported",linkCopied:"Link copied",selectFirst:"Select a node first.",deleteRoot:"The root cannot be deleted.",simulated:"Simulation complete",outcomesCount:"outcomes",probOf:"Probability",observed:"Observed",theoretical:"Theoretical",branch:"Branch",root:"Root",nodes:"nodes",branches:"branches",noOutcomes:"Add branches to generate outcomes.",rootLabel:"Experiment",yes:"Yes",no:"No",fair:"Heads",tails:"Tails"}
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
+let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
+function applyTheme(){
+ document.documentElement.dataset.theme=theme;
+ const dark=theme==="dark";
+ const button=$("themeBtn");
+ if(button){button.textContent=dark?"☀":"☾";button.title=dark?(lang==="es"?"Activar modo claro":"Switch to light mode"):(lang==="es"?"Activar modo oscuro":"Switch to dark mode");button.setAttribute("aria-label",button.title)}
+ const meta=document.querySelector('meta[name="theme-color"]');
+ if(meta)meta.content=dark?"#171a18":"#f7f7f5";
+}
+
 const makeNode=(id,label,p=null)=>({id,label,p,method:"manual",favourable:1,total:2,notes:"",color:"#6e8f7a",children:[]});
 let tree=makeNode("root","Experimento");tree.children=[makeNode("a","Opción A",50),makeNode("b","Opción B",50)];
 let projectName="Mi primer árbol";
@@ -56,7 +66,8 @@ $("deleteBtn").onclick=()=>{if(selected==="root"){toast(t("deleteRoot"));return}
 $("duplicateBtn").onclick=()=>{let n=find(tree,selected);if(!n){toast(t("selectFirst"));return}snapshot();let p=parentOf(tree,selected);if(!p){let copy=JSON.parse(JSON.stringify(n));copy.id=id();copy.label+=" (copia)";tree.children.push(copy);selected=copy.id}else{let copy=JSON.parse(JSON.stringify(n));copy.id=id();copy.label+=" (copia)";p.children.push(copy);selected=copy.id}render()};
 $("saveBtn").onclick=save;$("projectName").onchange=e=>{projectName=e.target.value;snapshotSoft()};
 $("orientationBtn").onclick=()=>{orientation=orientation==="horizontal"?"vertical":"horizontal";localize()};
-$("langBtn").onclick=()=>{lang=lang==="es"?"en":"es";localize()};
+$("langBtn").onclick=()=>{lang=lang==="es"?"en":"es";localize();applyTheme()};
+$("themeBtn").onclick=()=>{theme=theme==="light"?"dark":"light";localStorage.setItem("branch-theme",theme);applyTheme()};
 $("editorTab").onclick=()=>setView("editor");$("statsTab").onclick=()=>setView("stats");$("simulationTab").onclick=()=>setView("simulation");
 $("runSimulation").onclick=simulate;
 $("templateBtn").onclick=()=>modal(t("templatesTitle"),[{label:t("coin"),run:()=>template("coin")},{label:t("weather"),run:()=>template("weather")},{label:t("medical"),run:()=>template("medical")},{label:t("empty"),run:()=>template("empty")}]);
@@ -70,5 +81,5 @@ $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.string
 $("statsLevel").onchange=renderStats;
 try{let saved=localStorage.getItem("branch-project");if(saved){let s=JSON.parse(saved);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation}}catch(_){}
 if(location.hash.startsWith("#data=")){try{let d=decodeURIComponent(escape(atob(location.hash.slice(6))));let s=JSON.parse(d);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;history.replaceState(null,"",location.pathname)}catch(_){}}
-window.addEventListener("resize",drawTree);render();localize();
+window.addEventListener("resize",drawTree);applyTheme();render();localize();
 })();
