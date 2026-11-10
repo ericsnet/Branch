@@ -10,7 +10,7 @@ let zenKey="";
 let zenRemember=false;
 let pendingAITree=null;
 const ZEN_MODEL="deepseek-v4-flash-free";
-const ZEN_ENDPOINT="https://opencode.ai/zen/v1/chat/completions";
+const ZEN_ENDPOINT="https://branch-ai-proxy.eric-silvestre.workers.dev/api/ai";
 function loadZenSettings(){
  try{
   zenKey=sessionStorage.getItem("branch-zen-key")||localStorage.getItem("branch-zen-key")||"";
@@ -35,11 +35,11 @@ function updateAIStatus(message){
 function openAISettings(){
  const body=$("modalBody");
  $("modalTitle").textContent=lang==="es"?"Configuración de IA":"AI settings";
- body.innerHTML='<p class="settings-intro">'+(lang==="es"?"Conecta Branch con OpenCode Zen. La clave se guarda únicamente en este navegador; no se escribe en el repositorio.":"Connect Branch to OpenCode Zen. The key is stored only in this browser; it is not written to the repository.")+'</p>'+
+ body.innerHTML='<p class="settings-intro">'+(lang==="es"?"Conecta Branch mediante tu Worker de Cloudflare. La clave permanece en este navegador y solo se envía al Worker al realizar una petición de IA.":"Connect Branch through your Cloudflare Worker. The key stays in this browser and is sent to the Worker only when making an AI request.")+'</p>'+
  '<label for="zenApiKey">OpenCode Zen API Key</label><div class="key-input-row"><input id="zenApiKey" class="field" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." value="'+escapeHtml(zenKey)+'"><button type="button" class="secondary-btn" id="toggleZenKey">'+(lang==="es"?"Mostrar":"Show")+'</button></div>'+
  '<label class="remember-key"><input type="checkbox" id="rememberZenKey" '+(zenRemember?"checked":"")+'> '+(lang==="es"?"Recordar en este dispositivo (menos privado)":"Remember on this device (less private)")+'</label>'+
  '<div class="settings-model"><strong>Modelo</strong><span>DeepSeek V4 Flash Free</span><small>deepseek-v4-flash-free</small></div>'+
- '<p class="settings-security">'+(lang==="es"?"La clave se envía desde este navegador directamente a OpenCode Zen por HTTPS. No se envía a un servidor de Branch. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent directly from this browser to OpenCode Zen over HTTPS. It is not sent to a Branch server. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
+ '<p class="settings-security">'+(lang==="es"?"La clave se envía por HTTPS a tu Worker de Cloudflare, que la reenvía a OpenCode Zen sin guardarla. El Worker puede verla durante la petición. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent over HTTPS to your Cloudflare Worker, which forwards it to OpenCode Zen without storing it. The Worker can see it while processing the request. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
  '<div class="settings-actions"><button type="button" class="secondary-btn" id="testZenBtn">'+(lang==="es"?"Probar conexión":"Test connection")+'</button><button type="button" class="danger-btn" id="removeZenKeyBtn">'+(lang==="es"?"Eliminar clave":"Remove key")+'</button><button type="button" class="primary-btn" id="saveZenBtn">'+(lang==="es"?"Guardar":"Save")+'</button></div><div id="zenSettingsStatus" class="ai-status" role="status"></div>';
  $("modal").hidden=false;
  $("toggleZenKey").onclick=()=>{const input=$("zenApiKey");input.type=input.type==="password"?"text":"password";$("toggleZenKey").textContent=input.type==="password"?(lang==="es"?"Mostrar":"Show"):(lang==="es"?"Ocultar":"Hide")};
