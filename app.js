@@ -6,7 +6,8 @@ const translations = {
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
 let treeZoom=1,treeViewBox=null;
-let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
+const savedTheme=localStorage.getItem("branch-theme");
+let theme=savedTheme==="light"?"light":"dark";
 let zenKey="";
 let zenRemember=false;
 let zenVerified=false;
