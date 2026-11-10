@@ -5,7 +5,7 @@ const translations = {
  en:{project:"Project",horizontal:"Horizontal",vertical:"Vertical",save:"Save",export:"Export",workspace:"WORKSPACE",editor:"Editor",statistics:"Statistics",simulation:"Simulation",tree:"TREE",localSaved:"Saved locally",addBranch:"Add branch",templates:"Templates",import:"Import project",quickTip:"Quick tip",tipText:"Branch probabilities from the same node should add up to 100%.",probabilityWorkspace:"PROBABILITY WORKSPACE",treeEditor:"Tree editor",pageSubtitle:"Build scenarios, assign probabilities and understand every outcome.",share:"Share",liveCalculation:"Live calculations",fitView:"Fit view",clear:"Clear",canvasHint:"Select a node to edit it · Press + to add branches",selection:"SELECTION",nodeProperties:"Node properties",selectNode:"Select a node or branch in the tree.",label:"Label",probability:"Probability",inputMethod:"Method",favourable:"Favourable",total:"Total cases",notes:"Notes",color:"Color",duplicate:"Duplicate",delete:"Delete",qualityCheck:"QUALITY CHECK",validation:"Validation",outcomes:"OUTCOMES",finalOutcomes:"Final outcomes",path:"Path",jointProbability:"Joint probability",conditional:"Conditional",monteCarlo:"MONTE CARLO",runSimulation:"Run simulation",simDescription:"Repeat the experiment to compare observed frequencies with theoretical probabilities.",repetitions:"Number of repetitions",run:"Run simulation",results:"RESULTS",simulationResults:"Simulation results",runToSee:"Run a simulation to see results.",localOnly:"Your projects stay in this browser.",saved:"Project saved",added:"Branch added",invalidSum:"Branch probabilities add up to",missing:"Some probabilities are undefined.",over:"The sum exceeds 100%.",under:"The sum is below 100%.",allGood:"No inconsistencies detected in the current data.",exportTitle:"Export project",exportJson:"JSON project",exportSvg:"SVG diagram",exportPng:"PNG image",exportPdf:"PDF / Print",shareTitle:"Share tree",shareFile:"Download shareable file",shareLink:"Copy data link",templatesTitle:"Templates",coin:"Two coin tosses",weather:"Weather forecast",medical:"Hypothetical test",empty:"Empty tree",imported:"Project imported",linkCopied:"Link copied",selectFirst:"Select a node first.",deleteRoot:"The root cannot be deleted.",simulated:"Simulation complete",outcomesCount:"outcomes",probOf:"Probability",observed:"Observed",theoretical:"Theoretical",branch:"Branch",root:"Root",nodes:"nodes",branches:"branches",noOutcomes:"Add branches to generate outcomes.",rootLabel:"Experiment",guideTitle:"Get started in 3 steps",guideIntro:"You can start without configuring anything.",guideStep1:"Select a node to edit its name.",guideStep2:"Press + or “Add branch” to create options.",guideStep3:"Set percentages; branches from the same node must add up to 100%.",addBranchAction:"＋ Add branch",nodeHelp:"Click a node in the diagram to edit it.",probabilityHelp:"Options branching from the same node must add up to 100%.",yes:"Yes",no:"No",fair:"Heads",tails:"Tails",autoModeLabel:"Branch automation for this project",autoCopy:"Copy options and probabilities",autoEqual:"Copy options and split probabilities equally",autoNames:"Copy names only",autoManual:"Manual, no auto-fill",autoModeHelp:"When you create options under a branch, Branch mirrors the same names and positions across every sibling branch at that level. You can edit each copy independently."}
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
-let treeZoom=1,treeViewBox=null;
+let treeZoom=1,treeViewBox=null,treePanX=0,treePanY=0,treeDrag=null;
 const savedTheme=localStorage.getItem("branch-theme");
 let theme=savedTheme==="light"?"light":"dark";
 let zenKey="";
@@ -228,7 +228,7 @@ function drawTree(){
  }));
  const zoom= Math.max(.35,Math.min(3,treeZoom));
  const vw=baseW/zoom,vh=baseH/zoom;
- const vx=(baseW-vw)/2,vy=(baseH-vh)/2;
+ const vx=(baseW-vw)/2+treePanX,vy=(baseH-vh)/2+treePanY;
  treeViewBox={x:vx,y:vy,w:vw,h:vh};
  svg.setAttribute("viewBox",vx+" "+vy+" "+vw+" "+vh);
  svg.setAttribute("preserveAspectRatio","xMidYMid meet");
@@ -729,9 +729,51 @@ $("exportBtn").onclick=()=>modal(t("exportTitle"),[
 $("shareBtn").onclick=()=>modal(t("shareTitle"),[{label:t("shareFile"),run:()=>download("branch-share.json",serialize(),"application/json")},{label:t("shareLink"),run:()=>{let data=btoa(unescape(encodeURIComponent(serialize())));let url=location.origin+location.pathname+"#data="+data;navigator.clipboard.writeText(url).then(()=>toast(t("linkCopied"))).catch(()=>download("branch-share-link.txt",url,"text/plain"))}}]);
 $("importBtn").onclick=()=>$("fileInput").click();$("fileInput").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{importData(JSON.parse(await f.text()));toast(t("imported"))}catch(_){toast("Invalid JSON project")}e.target.value=""};
 $("clearBtn").onclick=()=>{if(confirm(lang==="es"?"¿Crear un árbol vacío?":"Create an empty tree?"))template("empty")};
-$("fitBtn").onclick=()=>{treeZoom=1;drawTree()};
+$("fitBtn").onclick=()=>{treeZoom=1;treePanX=0;treePanY=0;drawTree()};
 $("zoomInBtn").onclick=()=>{treeZoom=Math.min(3,treeZoom*1.2);drawTree()};
-$("zoomOutBtn").onclick=()=>{treeZoom=Math.max(.35,treeZoom/1.2);drawTree()};$("closeModal").onclick=()=>$("modal").hidden=true;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)$("modal").hidden=true});$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").hidden=true};
+$("zoomOutBtn").onclick=()=>{treeZoom=Math.max(.35,treeZoom/1.2);drawTree()};
+const treeCanvas=$("treeSvg");
+treeCanvas.style.cursor="grab";
+treeCanvas.addEventListener("pointerdown",e=>{
+ if(e.button!==0||e.target!==treeCanvas)return;
+ treeDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:treePanX,panY:treePanY};
+ treeCanvas.setPointerCapture(e.pointerId);treeCanvas.style.cursor="grabbing";e.preventDefault();
+});
+treeCanvas.addEventListener("pointermove",e=>{
+ if(!treeDrag||treeDrag.id!==e.pointerId)return;
+ const rect=treeCanvas.getBoundingClientRect(),box=treeViewBox;
+ if(!box||!rect.width||!rect.height)return;
+ treePanX=treeDrag.panX-(e.clientX-treeDrag.x)*box.w/rect.width;
+ treePanY=treeDrag.panY-(e.clientY-treeDrag.y)*box.h/rect.height;
+ drawTree();
+});
+const endTreeDrag=e=>{
+ if(!treeDrag||treeDrag.id!==e.pointerId)return;
+ treeDrag=null;treeCanvas.style.cursor="grab";
+};
+treeCanvas.addEventListener("pointerup",endTreeDrag);
+treeCanvas.addEventListener("pointercancel",endTreeDrag);
+treeCanvas.addEventListener("wheel",e=>{
+ e.preventDefault();
+ const rect=treeCanvas.getBoundingClientRect(),oldBox=treeViewBox;
+ if(!oldBox||!rect.width||!rect.height)return;
+ const px=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+ const py=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
+ const worldX=oldBox.x+px*oldBox.w,worldY=oldBox.y+py*oldBox.h;
+ const nextZoom=Math.max(.35,Math.min(3,treeZoom*(e.deltaY<0?1.12:1/1.12)));
+ if(nextZoom===treeZoom)return;
+ treeZoom=nextZoom;
+ const levels=[];function countLevel(n,d){(levels[d]||(levels[d]=[])).push(n);n.children.forEach(c=>countLevel(c,d+1))}
+ countLevel(tree,0);
+ const maxD=levels.length-1,maxBreadth=Math.max(...levels.map(x=>x.length),1),margin=100,gap=orientation==="horizontal"?190:150;
+ const baseW=orientation==="horizontal"?Math.max(700,margin*2+maxD*gap):Math.max(700,margin*2+(maxBreadth-1)*gap);
+ const baseH=orientation==="horizontal"?Math.max(420,margin*2+(maxBreadth-1)*105):Math.max(420,margin*2+maxD*150);
+ const nextW=baseW/treeZoom,nextH=baseH/treeZoom;
+ treePanX=worldX-px*nextW-(baseW-nextW)/2;
+ treePanY=worldY-py*nextH-(baseH-nextH)/2;
+ drawTree();
+},{passive:false});
+$("closeModal").onclick=()=>$("modal").hidden=true;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)$("modal").hidden=true});$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").hidden=true};
 $("undoBtn").onclick=()=>{if(!undoStack.length)return;redoStack.push(JSON.stringify({tree,projectName,orientation,projectMode}));let s=JSON.parse(undoStack.pop());tree=s.tree;projectName=s.projectName;orientation=s.orientation;selected="root";render()};
 $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.stringify({tree,projectName,orientation,projectMode}));let s=JSON.parse(redoStack.pop());tree=s.tree;projectName=s.projectName;orientation=s.orientation;selected="root";render()};
 $("statsLevel").onchange=renderStats;
