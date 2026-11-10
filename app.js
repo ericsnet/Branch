@@ -9,6 +9,7 @@ let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
 let zenVerified=false;
+let zenVerifiedKey="";
 let openCodeSessionId="";
 function getOpenCodeSessionId(){
  if(openCodeSessionId)return openCodeSessionId;
@@ -30,7 +31,7 @@ function loadZenSettings(){
 }
 function saveZenSettings(key,remember){
  const nextKey=String(key||"").trim();
- if(nextKey!==zenKey){zenVerified=false;try{sessionStorage.removeItem("branch-zen-verified")}catch(_){}}
+ if(nextKey!==zenKey&&nextKey!==zenVerifiedKey){zenVerified=false;zenVerifiedKey="";try{sessionStorage.removeItem("branch-zen-verified")}catch(_){}}
  zenKey=nextKey;zenRemember=!!remember;
  try{
   sessionStorage.removeItem("branch-zen-key");localStorage.removeItem("branch-zen-key");
@@ -63,7 +64,7 @@ function openAISettings(){
  $("toggleZenKey").onclick=()=>{const input=$("zenApiKey");input.type=input.type==="password"?"text":"password";$("toggleZenKey").textContent=input.type==="password"?(lang==="es"?"Mostrar":"Show"):(lang==="es"?"Ocultar":"Hide")};
  $("saveZenBtn").onclick=()=>{try{saveZenSettings($("zenApiKey").value,$("rememberZenKey").checked);$("modal").hidden=true;toast(lang==="es"?"Configuración guardada":"Settings saved")}catch(e){$("zenSettingsStatus").textContent=e.message}};
  $("removeZenKeyBtn").onclick=()=>{saveZenSettings("",false);$("zenApiKey").value="";$("rememberZenKey").checked=false;$("zenSettingsStatus").textContent=lang==="es"?"Clave eliminada de este navegador.":"Key removed from this browser."};
- $("testZenBtn").onclick=async()=>{const key=$("zenApiKey").value.trim();const status=$("zenSettingsStatus");if(!key){status.textContent=lang==="es"?"Introduce primero la API Key.":"Enter the API key first.";return}status.textContent=lang==="es"?"Probando conexión…":"Testing connection…";$("testZenBtn").disabled=true;try{await callZen([{role:"user",content:"Reply with exactly: BRANCH_OK"}],key,80);zenVerified=true;try{sessionStorage.setItem("branch-zen-verified","true")}catch(_){};updatePatternVisibility();status.textContent=lang==="es"?"Conexión correcta. Branch Intelligence se ha desactivado.":"Connection successful. Branch Intelligence has been disabled."}catch(e){zenVerified=false;try{sessionStorage.removeItem("branch-zen-verified")}catch(_){};updatePatternVisibility();status.textContent=describeAIError(e)}finally{$("testZenBtn").disabled=false}};
+ $("testZenBtn").onclick=async()=>{const key=$("zenApiKey").value.trim();const status=$("zenSettingsStatus");if(!key){status.textContent=lang==="es"?"Introduce primero la API Key.":"Enter the API key first.";return}status.textContent=lang==="es"?"Probando conexión…":"Testing connection…";$("testZenBtn").disabled=true;try{await callZen([{role:"user",content:"Reply with exactly: BRANCH_OK"}],key,80);zenVerified=true;zenVerifiedKey=key;try{sessionStorage.setItem("branch-zen-verified","true")}catch(_){};updatePatternVisibility();status.textContent=lang==="es"?"Conexión correcta. Branch Intelligence se ha desactivado.":"Connection successful. Branch Intelligence has been disabled."}catch(e){zenVerified=false;zenVerifiedKey="";try{sessionStorage.removeItem("branch-zen-verified")}catch(_){};updatePatternVisibility();status.textContent=describeAIError(e)}finally{$("testZenBtn").disabled=false}};
 }
 function describeAIError(error){
  const raw=String(error&&error.message||error||"Error desconocido");
