@@ -190,6 +190,51 @@ $("orientationBtn").onclick=()=>{orientation=orientation==="horizontal"?"vertica
 $("langBtn").onclick=()=>{lang=lang==="es"?"en":"es";localize();applyTheme()};
 $("themeBtn").onclick=()=>{theme=theme==="light"?"dark":"light";localStorage.setItem("branch-theme",theme);applyTheme()};
 $("editorTab").onclick=()=>setView("editor");$("statsTab").onclick=()=>setView("stats");$("simulationTab").onclick=()=>setView("simulation");
+
+function showShortcuts(){
+ const rows=lang==="es"?[
+  ["Ctrl / ⌘ + S","Guardar el proyecto"],
+  ["Ctrl / ⌘ + Z","Deshacer"],
+  ["Ctrl / ⌘ + Shift + Z","Rehacer"],
+  ["Ctrl + Y","Rehacer"],
+  ["Ctrl / ⌘ + Enter","Añadir una rama al nodo seleccionado"],
+  ["Supr / Retroceso","Eliminar el nodo seleccionado"],
+  ["Ctrl / ⌘ + E","Abrir las opciones de exportación"],
+  ["Esc","Cerrar la ventana abierta"]
+ ]:[
+  ["Ctrl / ⌘ + S","Save project"],
+  ["Ctrl / ⌘ + Z","Undo"],
+  ["Ctrl / ⌘ + Shift + Z","Redo"],
+  ["Ctrl + Y","Redo"],
+  ["Ctrl / ⌘ + Enter","Add a branch to the selected node"],
+  ["Delete / Backspace","Delete the selected node"],
+  ["Ctrl / ⌘ + E","Open export options"],
+  ["Esc","Close the open dialog"]
+ ];
+ $("modalTitle").textContent=lang==="es"?"Atajos de teclado":"Keyboard shortcuts";
+ $("modalBody").innerHTML=rows.map(([key,description])=>'<div class="modal-option"><span>'+escapeHtml(key)+'</span><small>'+escapeHtml(description)+'</small></div>').join("");
+ $("modal").hidden=false;
+}
+$("shortcutsBtn").onclick=showShortcuts;
+document.addEventListener("keydown",e=>{
+ const key=e.key.toLowerCase(),mod=e.ctrlKey||e.metaKey;
+ const target=e.target;
+ const editing=!!(target&&(target.matches("input,textarea,select")||target.isContentEditable));
+ if(e.key==="Escape")return;
+ if(mod&&key==="s"){e.preventDefault();save();return}
+ if(mod&&key==="e"){e.preventDefault();$("exportBtn").click();return}
+ if(editing)return;
+ if(mod&&key==="z"){
+  e.preventDefault();
+  if(e.shiftKey)$("redoBtn").click();else $("undoBtn").click();
+  return;
+ }
+ if(e.ctrlKey&&key==="y"){e.preventDefault();$("redoBtn").click();return}
+ if(mod&&e.key==="Enter"){e.preventDefault();addBranch(selected);return}
+ if((e.key==="Delete"||e.key==="Backspace")&&selected!=="root"){
+  e.preventDefault();$("deleteBtn").click();
+ }
+});
 $("runSimulation").onclick=simulate;
 $("templateBtn").onclick=()=>modal(t("templatesTitle"),[{label:t("coin"),run:()=>template("coin")},{label:t("weather"),run:()=>template("weather")},{label:t("medical"),run:()=>template("medical")},{label:t("empty"),run:()=>template("empty")}]);
 $("exportBtn").onclick=()=>modal(t("exportTitle"),[
