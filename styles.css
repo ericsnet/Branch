@@ -176,3 +176,5 @@ html[data-theme="dark"] .ai-tree-preview,html[data-theme="dark"] .settings-model
 #patternAssistant{margin-top:14px}
 #remoteAI{margin-top:14px}
 @media(min-width:901px){.editor-lower{margin-top:16px}}
+
+.ai-disclosure>summary{cursor:pointer;list-style:none;font:700 12px Manrope,sans-serif;color:var(--text);padding:2px 0}.ai-disclosure>summary::-webkit-details-marker{display:none}.ai-disclosure>summary::after{content:"＋";float:right;color:var(--muted)}.ai-disclosure[open]>summary::after{content:"−"}.ai-disclosure-body{padding-top:12px}
