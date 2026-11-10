@@ -168,3 +168,11 @@ html[data-theme="dark"] .pattern-item,html[data-theme="dark"] .pattern-placehold
 .ai-tree-preview{max-height:260px;overflow:auto;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font:11px/1.55 "DM Sans",sans-serif;color:var(--text)}
 html[data-theme="dark"] .ai-tree-preview,html[data-theme="dark"] .settings-model{background:#171c18}
 @media(max-width:650px){.remote-ai-head{display:block}.ai-model-tag{display:inline-block;margin-top:9px}.remote-ai-actions button{flex:1 1 100%}.settings-actions button{flex:1 1 auto}}
+
+
+/* Less cluttered editor landing view */
+.editor-hint{margin:0 0 14px;padding:10px 13px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);font-size:11px;line-height:1.5}
+#patternAssistant[hidden]{display:none!important}
+#patternAssistant{margin-top:14px}
+#remoteAI{margin-top:14px}
+@media(min-width:901px){.editor-lower{margin-top:16px}}
