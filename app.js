@@ -9,7 +9,7 @@ let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
 let pendingAITree=null;
-const ZEN_MODEL="deepseek-v4-flash-free";
+const ZEN_MODEL="deepseek-v4.1-flash-free";
 const ZEN_ENDPOINT="https://branch-ai-proxy.eric-silvestre.workers.dev/api/ai";
 function loadZenSettings(){
  try{
@@ -29,7 +29,7 @@ function updateAIStatus(message){
  const el=$("aiStatus");if(!el)return;
  if(message){el.textContent=message;return}
  el.textContent=zenKey
-  ?(lang==="es"?"OpenCode Zen configurado · DeepSeek V4 Flash Free":"OpenCode Zen configured · DeepSeek V4 Flash Free")
+  ?(lang==="es"?"OpenCode Zen configurado · DeepSeek V4.1 Flash Free":"OpenCode Zen configured · DeepSeek V4.1 Flash Free")
   :(lang==="es"?"Configura tu API Key en ⚙ para activar la IA remota. El motor local sigue funcionando sin conexión.":"Set your API key in ⚙ to enable remote AI. The local engine keeps working offline.");
 }
 function openAISettings(){
@@ -38,7 +38,7 @@ function openAISettings(){
  body.innerHTML='<p class="settings-intro">'+(lang==="es"?"Conecta Branch mediante tu Worker de Cloudflare. La clave permanece en este navegador y solo se envía al Worker al realizar una petición de IA.":"Connect Branch through your Cloudflare Worker. The key stays in this browser and is sent to the Worker only when making an AI request.")+'</p>'+
  '<label for="zenApiKey">OpenCode Zen API Key</label><div class="key-input-row"><input id="zenApiKey" class="field" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." value="'+escapeHtml(zenKey)+'"><button type="button" class="secondary-btn" id="toggleZenKey">'+(lang==="es"?"Mostrar":"Show")+'</button></div>'+
  '<label class="remember-key"><input type="checkbox" id="rememberZenKey" '+(zenRemember?"checked":"")+'> '+(lang==="es"?"Recordar en este dispositivo (menos privado)":"Remember on this device (less private)")+'</label>'+
- '<div class="settings-model"><strong>Modelo</strong><span>DeepSeek V4 Flash Free</span><small>deepseek-v4-flash-free</small></div>'+
+ '<div class="settings-model"><strong>Modelo</strong><span>DeepSeek V4.1 Flash Free</span><small>deepseek-v4.1-flash-free</small></div>'+
  '<p class="settings-security">'+(lang==="es"?"La clave se envía por HTTPS a tu Worker de Cloudflare, que la reenvía a OpenCode Zen sin guardarla. El Worker puede verla durante la petición. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent over HTTPS to your Cloudflare Worker, which forwards it to OpenCode Zen without storing it. The Worker can see it while processing the request. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
  '<div class="settings-actions"><button type="button" class="secondary-btn" id="testZenBtn">'+(lang==="es"?"Probar conexión":"Test connection")+'</button><button type="button" class="danger-btn" id="removeZenKeyBtn">'+(lang==="es"?"Eliminar clave":"Remove key")+'</button><button type="button" class="primary-btn" id="saveZenBtn">'+(lang==="es"?"Guardar":"Save")+'</button></div><div id="zenSettingsStatus" class="ai-status" role="status"></div>';
  $("modal").hidden=false;
@@ -124,7 +124,7 @@ async function runRemoteAI(mode){
  const buttons=["aiCreateBtn","aiAnalyzeBtn","aiRepairBtn"].map($);
  buttons.forEach(button=>button.disabled=true);
  $("aiResult").hidden=true;
- $("aiStatus").textContent=lang==="es"?"Consultando DeepSeek V4 Flash Free…":"Asking DeepSeek V4 Flash Free…";
+ $("aiStatus").textContent=lang==="es"?"Consultando DeepSeek V4.1 Flash Free…":"Asking DeepSeek V4.1 Flash Free…";
  const current={projectName,tree:treeToAIData(tree),validation:$("validationList").innerText};
  const system="You are the probability-tree assistant inside Branch. Return ONLY valid JSON, no markdown fences. Never invent observations or claim a probability is empirically measured unless the user supplied data. A probability must be 0..100 or null. Each node has label, probability (null for root), notes, and children. Sibling probabilities should sum to 100 only when the information supports it; if unknown, use null and explain the uncertainty in issues. Keep the tree compact and mathematically coherent. Output schema: {\"summary\":string,\"tree\":{\"label\":string,\"probability\":null,\"notes\":string,\"children\":[...]},\"issues\":[{\"severity\":\"error|warning|info\",\"title\":string,\"message\":string,\"path\":string}]}. For analysis-only tasks you may omit tree.";
  let instruction="";
