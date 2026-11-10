@@ -5,6 +5,7 @@ const translations = {
  en:{project:"Project",horizontal:"Horizontal",vertical:"Vertical",save:"Save",export:"Export",workspace:"WORKSPACE",editor:"Editor",statistics:"Statistics",simulation:"Simulation",tree:"TREE",localSaved:"Saved locally",addBranch:"Add branch",templates:"Templates",import:"Import project",quickTip:"Quick tip",tipText:"Branch probabilities from the same node should add up to 100%.",probabilityWorkspace:"PROBABILITY WORKSPACE",treeEditor:"Tree editor",pageSubtitle:"Build scenarios, assign probabilities and understand every outcome.",share:"Share",liveCalculation:"Live calculations",fitView:"Fit view",clear:"Clear",canvasHint:"Select a node to edit it · Press + to add branches",selection:"SELECTION",nodeProperties:"Node properties",selectNode:"Select a node or branch in the tree.",label:"Label",probability:"Probability",inputMethod:"Method",favourable:"Favourable",total:"Total cases",notes:"Notes",color:"Color",duplicate:"Duplicate",delete:"Delete",qualityCheck:"QUALITY CHECK",validation:"Validation",outcomes:"OUTCOMES",finalOutcomes:"Final outcomes",path:"Path",jointProbability:"Joint probability",conditional:"Conditional",monteCarlo:"MONTE CARLO",runSimulation:"Run simulation",simDescription:"Repeat the experiment to compare observed frequencies with theoretical probabilities.",repetitions:"Number of repetitions",run:"Run simulation",results:"RESULTS",simulationResults:"Simulation results",runToSee:"Run a simulation to see results.",localOnly:"Your projects stay in this browser.",saved:"Project saved",added:"Branch added",invalidSum:"Branch probabilities add up to",missing:"Some probabilities are undefined.",over:"The sum exceeds 100%.",under:"The sum is below 100%.",allGood:"No inconsistencies detected in the current data.",exportTitle:"Export project",exportJson:"JSON project",exportSvg:"SVG diagram",exportPng:"PNG image",exportPdf:"PDF / Print",shareTitle:"Share tree",shareFile:"Download shareable file",shareLink:"Copy data link",templatesTitle:"Templates",coin:"Two coin tosses",weather:"Weather forecast",medical:"Hypothetical test",empty:"Empty tree",imported:"Project imported",linkCopied:"Link copied",selectFirst:"Select a node first.",deleteRoot:"The root cannot be deleted.",simulated:"Simulation complete",outcomesCount:"outcomes",probOf:"Probability",observed:"Observed",theoretical:"Theoretical",branch:"Branch",root:"Root",nodes:"nodes",branches:"branches",noOutcomes:"Add branches to generate outcomes.",rootLabel:"Experiment",guideTitle:"Get started in 3 steps",guideIntro:"You can start without configuring anything.",guideStep1:"Select a node to edit its name.",guideStep2:"Press + or “Add branch” to create options.",guideStep3:"Set percentages; branches from the same node must add up to 100%.",addBranchAction:"＋ Add branch",nodeHelp:"Click a node in the diagram to edit it.",probabilityHelp:"Options branching from the same node must add up to 100%.",yes:"Yes",no:"No",fair:"Heads",tails:"Tails",autoModeLabel:"Branch automation for this project",autoCopy:"Copy options and probabilities",autoEqual:"Copy options and split probabilities equally",autoNames:"Copy names only",autoManual:"Manual, no auto-fill",autoModeHelp:"When you create options under a branch, Branch mirrors the same names and positions across every sibling branch at that level. You can edit each copy independently."}
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
+let treeZoom=1,treeViewBox=null;
 let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
@@ -208,14 +209,68 @@ function walk(n,fn){fn(n);n.children.forEach(c=>walk(c,fn))}
 function render(){ $("projectName").value=projectName;drawTree();renderInspector();renderValidation();$("branchCount").textContent=countNodes(tree)-1+" "+t("branches");if(view==="stats")renderStats();schedulePatternAnalysis(); }
 function countNodes(n){return 1+n.children.reduce((s,c)=>s+countNodes(c),0)}
 function drawTree(){
- const svg=$("treeSvg"),W=svg.clientWidth||900,H=svg.clientHeight||460;svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.innerHTML="";
- const levels=[];function level(n,d){(levels[d]||(levels[d]=[])).push(n);n.children.forEach(c=>level(c,d+1))}level(tree,0);
- const maxD=levels.length-1,positions={};levels.forEach((arr,d)=>arr.forEach((n,i)=>{let x,y;if(orientation==="horizontal"){x=70+d*(Math.max(120,(W-170)/Math.max(1,maxD)));y=(H/(arr.length+1))*(i+1)}else{x=(W/(arr.length+1))*(i+1);y=45+d*(Math.max(100,(H-100)/Math.max(1,maxD)))}positions[n.id]={x,y}}));
- function line(x1,y1,x2,y2){let p=document.createElementNS("http://www.w3.org/2000/svg","path");p.setAttribute("d","M"+x1+" "+y1+" C"+((x1+x2)/2)+" "+y1+" "+((x1+x2)/2)+" "+y2+" "+x2+" "+y2);p.setAttribute("class","branch-line");svg.appendChild(p)}
- walk(tree,n=>{if(n.id!=="root"){let par=parentOf(tree,n.id),a=positions[par.id],b=positions[n.id];line(a.x+66,a.y,b.x-66,b.y);let tx=(a.x+b.x)/2,ty=(a.y+b.y)/2-7;let label=document.createElementNS("http://www.w3.org/2000/svg","text");label.setAttribute("x",tx);label.setAttribute("y",ty);label.setAttribute("text-anchor","middle");label.setAttribute("class","branch-prob");let p=probability(n);label.textContent=p===null?"—":p.toFixed(1)+"%";svg.appendChild(label)}});
- walk(tree,n=>{let p=positions[n.id],g=document.createElementNS("http://www.w3.org/2000/svg","g");g.setAttribute("class","node"+(n.id===selected?" selected":""));g.setAttribute("transform","translate("+(p.x-62)+","+(p.y-23)+")");g.addEventListener("click",()=>{selected=n.id;renderInspector();drawTree()});let r=document.createElementNS("http://www.w3.org/2000/svg","rect");r.setAttribute("width","124");r.setAttribute("height","46");r.setAttribute("stroke",n.color);g.appendChild(r);let dot=document.createElementNS("http://www.w3.org/2000/svg","circle");dot.setAttribute("cx","12");dot.setAttribute("cy","14");dot.setAttribute("r","4");dot.setAttribute("fill",n.color);g.appendChild(dot);let text=document.createElementNS("http://www.w3.org/2000/svg","text");text.setAttribute("x","22");text.setAttribute("y","18");text.setAttribute("class","node-label");text.textContent=n.label.length>14?n.label.slice(0,13)+"…":n.label;g.appendChild(text);let sub=document.createElementNS("http://www.w3.org/2000/svg","text");sub.setAttribute("x","12");sub.setAttribute("y","35");sub.setAttribute("class","node-sub");sub.textContent=n.children.length?n.children.length+" "+t("branches"):t("finalOutcomes");g.appendChild(sub);svg.appendChild(g);
- if(n.id===selected){let plus=document.createElementNS("http://www.w3.org/2000/svg","g");plus.setAttribute("transform","translate("+(p.x+55)+","+(p.y+13)+")");plus.style.cursor="pointer";plus.addEventListener("click",e=>{e.stopPropagation();addBranch(n.id)});let c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("r","10");c.setAttribute("class","add-node");plus.appendChild(c);let tx=document.createElementNS("http://www.w3.org/2000/svg","text");tx.setAttribute("text-anchor","middle");tx.setAttribute("y","4");tx.setAttribute("class","add-node-text");tx.textContent="+";plus.appendChild(tx);svg.appendChild(plus)}
+ const svg=$("treeSvg"),W=svg.clientWidth||900,H=svg.clientHeight||460;
+ svg.innerHTML="";
+ const levels=[];
+ function level(n,d){(levels[d]||(levels[d]=[])).push(n);n.children.forEach(c=>level(c,d+1))}
+ level(tree,0);
+ const maxD=levels.length-1,maxBreadth=Math.max(...levels.map(a=>a.length),1),positions={};
+ const margin=100,nodeW=124,nodeH=46;
+ const gap=orientation==="horizontal"?190:150;
+ const baseW=orientation==="horizontal"?Math.max(700,margin*2+maxD*gap):Math.max(700,margin*2+(maxBreadth-1)*gap);
+ const baseH=orientation==="horizontal"?Math.max(420,margin*2+(maxBreadth-1)*105):Math.max(420,margin*2+maxD*150);
+ levels.forEach((arr,d)=>arr.forEach((n,i)=>{
+  let x,y;
+  if(orientation==="horizontal"){x=margin+d*gap;y=baseH/2-(arr.length-1)*52.5+i*105}
+  else{x=baseW/2-(arr.length-1)*75+i*150;y=margin+d*150}
+  positions[n.id]={x,y};
+ }));
+ const zoom= Math.max(.35,Math.min(3,treeZoom));
+ const vw=baseW/zoom,vh=baseH/zoom;
+ const vx=(baseW-vw)/2,vy=(baseH-vh)/2;
+ treeViewBox={x:vx,y:vy,w:vw,h:vh};
+ svg.setAttribute("viewBox",vx+" "+vy+" "+vw+" "+vh);
+ svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+ function line(x1,y1,x2,y2){
+  const p=document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("d","M"+x1+" "+y1+" C"+((x1+x2)/2)+" "+y1+" "+((x1+x2)/2)+" "+y2+" "+x2+" "+y2);
+  p.setAttribute("class","branch-line");svg.appendChild(p)
+ }
+ walk(tree,n=>{
+  if(n.id!=="root"){
+   const par=parentOf(tree,n.id),a=positions[par.id],b=positions[n.id];
+   line(a.x+nodeW/2,a.y,b.x-nodeW/2,b.y);
+   const label=document.createElementNS("http://www.w3.org/2000/svg","text");
+   label.setAttribute("x",(a.x+b.x)/2);label.setAttribute("y",(a.y+b.y)/2-7);
+   label.setAttribute("text-anchor","middle");label.setAttribute("class","branch-prob");
+   const p=probability(n);label.textContent=p===null?"—":p.toFixed(1)+"%";svg.appendChild(label);
+  }
  });
+ walk(tree,n=>{
+  const p=positions[n.id],g=document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.setAttribute("class","node"+(n.id===selected?" selected":""));
+  g.setAttribute("transform","translate("+(p.x-nodeW/2)+","+(p.y-nodeH/2)+")");
+  g.addEventListener("click",()=>{selected=n.id;renderInspector();drawTree()});
+  const r=document.createElementNS("http://www.w3.org/2000/svg","rect");
+  r.setAttribute("width",String(nodeW));r.setAttribute("height",String(nodeH));r.setAttribute("stroke",n.color);g.appendChild(r);
+  const dot=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  dot.setAttribute("cx","12");dot.setAttribute("cy","14");dot.setAttribute("r","4");dot.setAttribute("fill",n.color);g.appendChild(dot);
+  const label=document.createElementNS("http://www.w3.org/2000/svg","text");
+  label.setAttribute("x","22");label.setAttribute("y","18");label.setAttribute("class","node-label");
+  label.textContent=n.label.length>14?n.label.slice(0,13)+"…":n.label;g.appendChild(label);
+  const sub=document.createElementNS("http://www.w3.org/2000/svg","text");
+  sub.setAttribute("x","12");sub.setAttribute("y","35");sub.setAttribute("class","node-sub");
+  sub.textContent=n.children.length?n.children.length+" "+t("branches"):t("finalOutcomes");g.appendChild(sub);svg.appendChild(g);
+  if(n.id===selected){
+   const plus=document.createElementNS("http://www.w3.org/2000/svg","g");
+   plus.setAttribute("transform","translate("+(p.x+nodeW/2-7)+","+(p.y+13)+")");plus.style.cursor="pointer";
+   plus.addEventListener("click",e=>{e.stopPropagation();addBranch(n.id)});
+   const circle=document.createElementNS("http://www.w3.org/2000/svg","circle");circle.setAttribute("r","10");circle.setAttribute("class","add-node");plus.appendChild(circle);
+   const tx=document.createElementNS("http://www.w3.org/2000/svg","text");tx.setAttribute("text-anchor","middle");tx.setAttribute("y","4");tx.setAttribute("class","add-node-text");tx.textContent="+";plus.appendChild(tx);svg.appendChild(plus);
+  }
+ });
+ const zoomLabel=$("zoomLevel");if(zoomLabel)zoomLabel.textContent=Math.round(zoom*100)+"%";
+ const out=$("zoomOutBtn"),inc=$("zoomInBtn");if(out)out.disabled=zoom<=.35;if(inc)inc.disabled=zoom>=3;
 }
 function renderInspector(){let n=find(tree,selected);$("emptyInspector").hidden=!!n;$("nodeInspector").hidden=!n;if(!n)return;$("selectedType").textContent=n.id==="root"?t("root").toUpperCase():t("branch").toUpperCase();$("nodeLabel").value=n.label;$("nodeNotes").value=n.notes||"";$("branchFields").hidden=n.id==="root";$("probability").value=n.p??"";$("probMethod").value=n.method||"manual";$("dataFields").hidden=n.method!=="data";$("favourable").value=n.favourable??1;$("total").value=n.total??2;document.querySelectorAll(".swatches button").forEach(b=>b.classList.toggle("selected",b.dataset.color===n.color))}
 function renderValidation(){let warnings=[];walk(tree,n=>{if(n.children.length){let vals=n.children.map(probability);if(vals.some(x=>x===null||!Number.isFinite(x)))warnings.push(t("missing"));else{let sum=vals.reduce((a,b)=>a+b,0);if(sum>100.001)warnings.push(t("over")+" ("+sum.toFixed(1)+" %).");else if(sum<99.999)warnings.push(t("under")+" ("+sum.toFixed(1)+" %).")}}});$("validationCount").textContent=warnings.length;$("validationCount").className="pill "+(warnings.length?"":"green-pill");$("validationList").innerHTML=warnings.length?warnings.map(w=>'<div class="validation-item"><span class="v-icon">!</span><span>'+escapeHtml(w)+'</span></div>').join(''):'<div class="validation-item ok"><span class="v-icon">✓</span><span>'+escapeHtml(t("allGood"))+'</span></div>'}
@@ -673,7 +728,9 @@ $("exportBtn").onclick=()=>modal(t("exportTitle"),[
 $("shareBtn").onclick=()=>modal(t("shareTitle"),[{label:t("shareFile"),run:()=>download("branch-share.json",serialize(),"application/json")},{label:t("shareLink"),run:()=>{let data=btoa(unescape(encodeURIComponent(serialize())));let url=location.origin+location.pathname+"#data="+data;navigator.clipboard.writeText(url).then(()=>toast(t("linkCopied"))).catch(()=>download("branch-share-link.txt",url,"text/plain"))}}]);
 $("importBtn").onclick=()=>$("fileInput").click();$("fileInput").onchange=async e=>{let f=e.target.files[0];if(!f)return;try{importData(JSON.parse(await f.text()));toast(t("imported"))}catch(_){toast("Invalid JSON project")}e.target.value=""};
 $("clearBtn").onclick=()=>{if(confirm(lang==="es"?"¿Crear un árbol vacío?":"Create an empty tree?"))template("empty")};
-$("fitBtn").onclick=()=>drawTree();$("closeModal").onclick=()=>$("modal").hidden=true;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)$("modal").hidden=true});$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").hidden=true};
+$("fitBtn").onclick=()=>{treeZoom=1;drawTree()};
+$("zoomInBtn").onclick=()=>{treeZoom=Math.min(3,treeZoom*1.2);drawTree()};
+$("zoomOutBtn").onclick=()=>{treeZoom=Math.max(.35,treeZoom/1.2);drawTree()};$("closeModal").onclick=()=>$("modal").hidden=true;document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)$("modal").hidden=true});$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").hidden=true};
 $("undoBtn").onclick=()=>{if(!undoStack.length)return;redoStack.push(JSON.stringify({tree,projectName,orientation,projectMode}));let s=JSON.parse(undoStack.pop());tree=s.tree;projectName=s.projectName;orientation=s.orientation;selected="root";render()};
 $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.stringify({tree,projectName,orientation,projectMode}));let s=JSON.parse(redoStack.pop());tree=s.tree;projectName=s.projectName;orientation=s.orientation;selected="root";render()};
 $("statsLevel").onchange=renderStats;
