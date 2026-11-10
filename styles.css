@@ -130,3 +130,7 @@ html[data-theme="dark"] .pattern-item,html[data-theme="dark"] .pattern-placehold
 .pattern-item.pattern-warning{border-left:3px solid #d59b3b}
 .pattern-item.pattern-suggestion{border-left:3px solid var(--accent)}
 .pattern-item.pattern-insight{border-left:3px solid #648bd4}
+
+.pattern-feedback{display:flex;gap:6px;margin-top:7px}
+.pattern-feedback button{border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--muted);padding:4px 8px;font:500 10px "DM Sans";cursor:pointer}
+.pattern-feedback button:hover{border-color:var(--accent);color:var(--accent)}
