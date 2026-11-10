@@ -105,6 +105,25 @@ function analyzeTreePatterns(){
  visit(tree);
  return findings;
 }
+function setupPatternPanel(){
+ const panel=$("patternAssistant"),button=$("patternToggle");
+ if(!panel||!button)return;
+ const stored=localStorage.getItem("branch-pattern-collapsed");
+ panel.classList.toggle("is-collapsed",stored==="true");
+ const update=()=>{
+  const collapsed=panel.classList.contains("is-collapsed");
+  button.setAttribute("aria-expanded",String(!collapsed));
+  button.textContent=lang==="es"?(collapsed?"Mostrar":"Ocultar"):(collapsed?"Show":"Hide");
+  button.title=lang==="es"?(collapsed?"Mostrar resultados del análisis":"Ocultar resultados del análisis"):(collapsed?"Show analysis results":"Hide analysis results");
+ };
+ button.addEventListener("click",()=>{
+  panel.classList.toggle("is-collapsed");
+  localStorage.setItem("branch-pattern-collapsed",String(panel.classList.contains("is-collapsed")));
+  update();
+ });
+ update();
+ return update;
+}
 function schedulePatternAnalysis(){
  const panel=$("patternAssistant"),status=$("patternStatus"),list=$("patternFindings");
  if(!panel||!status||!list)return;
@@ -379,5 +398,5 @@ $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.string
 $("statsLevel").onchange=renderStats;
 try{let saved=localStorage.getItem("branch-project");if(saved){let s=JSON.parse(saved);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual"}}catch(_){}
 if(location.hash.startsWith("#data=")){try{let d=decodeURIComponent(escape(atob(location.hash.slice(6))));let s=JSON.parse(d);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual";history.replaceState(null,"",location.pathname)}catch(_){}}
-window.addEventListener("resize",drawTree);applyTheme();render();renderProjectMode();localize();
+window.addEventListener("resize",drawTree);const updatePatternToggle=setupPatternPanel();applyTheme();render();renderProjectMode();localize();if(updatePatternToggle)updatePatternToggle();
 })();
