@@ -734,21 +734,33 @@ $("zoomInBtn").onclick=()=>{treeZoom=Math.min(3,treeZoom*1.2);drawTree()};
 $("zoomOutBtn").onclick=()=>{treeZoom=Math.max(.35,treeZoom/1.2);drawTree()};
 const treeCanvas=$("treeSvg");
 treeCanvas.style.cursor="grab";
+let treeDragMoved=false,suppressTreeClick=false;
 treeCanvas.addEventListener("pointerdown",e=>{
- if(e.button!==0||e.target!==treeCanvas)return;
- treeDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:treePanX,panY:treePanY};
- treeCanvas.setPointerCapture(e.pointerId);treeCanvas.style.cursor="grabbing";e.preventDefault();
+ if(e.button!==0)return;
+ treeDrag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:treePanX,panY:treePanY,moved:false};
+ treeDragMoved=false;
+ treeCanvas.setPointerCapture(e.pointerId);treeCanvas.style.cursor="grabbing";
 });
 treeCanvas.addEventListener("pointermove",e=>{
  if(!treeDrag||treeDrag.id!==e.pointerId)return;
+ const dx=e.clientX-treeDrag.x,dy=e.clientY-treeDrag.y;
+ if(!treeDrag.moved&&Math.hypot(dx,dy)<3)return;
+ treeDrag.moved=true;treeDragMoved=true;
  const rect=treeCanvas.getBoundingClientRect(),box=treeViewBox;
  if(!box||!rect.width||!rect.height)return;
- treePanX=treeDrag.panX-(e.clientX-treeDrag.x)*box.w/rect.width;
- treePanY=treeDrag.panY-(e.clientY-treeDrag.y)*box.h/rect.height;
+ treePanX=treeDrag.panX-dx*box.w/rect.width;
+ treePanY=treeDrag.panY-dy*box.h/rect.height;
  drawTree();
 });
+treeCanvas.addEventListener("click",e=>{
+ if(!treeDragMoved&&!suppressTreeClick)return;
+ e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+ suppressTreeClick=true;treeDragMoved=false;
+ setTimeout(()=>{suppressTreeClick=false},0);
+},true);
 const endTreeDrag=e=>{
  if(!treeDrag||treeDrag.id!==e.pointerId)return;
+ if(treeDrag.moved)suppressTreeClick=true;
  treeDrag=null;treeCanvas.style.cursor="grab";
 };
 treeCanvas.addEventListener("pointerup",endTreeDrag);
