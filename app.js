@@ -55,85 +55,121 @@ function normalizePatternLabel(value){
 }
 function analyzeTreePatterns(){
  const findings=[],seen=new Set();
- const add=(key,title,detail,action=null)=>{if(!seen.has(key)){seen.add(key);findings.push({title,detail,action})}};
- const visit=node=>{
+ const add=(key,title,detail,action=null,severity="info",priority=3)=>{
+  if(!seen.has(key)){seen.add(key);findings.push({title,detail,action,severity,priority})}
+ };
+ const groups=[];
+ const visit=(node,path=[])=>{
   const children=node.children||[];
-  if(children.length>=2){
-   const active=children.filter(branch=>(branch.children||[]).length>0);
-   const empty=children.length-active.length;
-   if(active.length&&empty)add("incomplete:"+node.id,lang==="es"?"Estructura paralela incompleta":"Incomplete parallel structure",lang==="es"?active.length+" de "+children.length+" ramas tienen opciones internas; "+empty+" todavía no.":"Only "+active.length+" of "+children.length+" branches have child options; "+empty+" do not.");
-   if(active.length>=2){
-    const counts=active.map(branch=>branch.children.length);
-    if(counts.every(count=>count===counts[0]))add("shape:"+node.id,lang==="es"?"Estructura repetida":"Repeated structure",lang==="es"?active.length+" ramas hermanas tienen "+counts[0]+" opciones cada una.":active.length+" sibling branches each contain "+counts[0]+" options.");
-    const labelSets=active.map(branch=>new Set(branch.children.map(child=>normalizePatternLabel(child.label)).filter(Boolean)));
-    const shared=[...labelSets[0]].filter(label=>labelSets.every(set=>set.has(label)));
-    if(shared.length)add("labels:"+node.id,lang==="es"?"Nombres compartidos":"Shared option names",lang==="es"?"Se repiten en todas las ramas analizadas: "+shared.slice(0,5).join(", ")+".":"Repeated across the analyzed branches: "+shared.slice(0,5).join(", ")+".");
-    if(counts.some(count=>count!==counts[0]))add("counts:"+node.id,lang==="es"?"Número de opciones diferente":"Different option counts",lang==="es"?"Las ramas hermanas no tienen el mismo número de opciones.":"Sibling branches have different numbers of options.");
+  if(children.length){
+   groups.push({node,children,path});
+   const vals=children.map(probability);
+   const known=vals.every(value=>value!==null&&Number.isFinite(value)&&value>=0&&value<=100);
+   if(vals.some(value=>value!==null&&(!Number.isFinite(value)||value<0||value>100))){
+    add("invalid-p:"+node.id,lang==="es"?"Probabilidad fuera de rango":"Probability out of range",
+     lang==="es"?"Hay porcentajes negativos, superiores al 100 % o no válidos en las opciones de «"+node.label+"». Corrige esos valores antes de interpretar los resultados.":"Some probabilities under “"+node.label+"” are negative, above 100%, or invalid. Correct them before interpreting results.",null,"error",0);
+   }else if(known){
+    const sum=vals.reduce((a,b)=>a+b,0);
+    if(sum>0&&Math.abs(sum-100)>0.01){
+     add("sum:"+node.id,lang==="es"?"Distribución que no suma 100 %":"Distribution does not total 100%",
+      lang==="es"?"Las opciones de «"+node.label+"» suman "+sum.toFixed(2)+" %. Puedes normalizarlas conservando sus proporciones relativas.":"Options under “"+node.label+"” total "+sum.toFixed(2)+"%. You can normalize them while preserving their relative proportions.",
+      {type:"normalize",nodeId:node.id},"warning",1);
+    }
+   }else if(vals.some(value=>value===null)){
+    const missing=vals.filter(value=>value===null).length;
+    add("missing-p:"+node.id,lang==="es"?"Probabilidades incompletas":"Incomplete probabilities",
+     lang==="es"?"En «"+node.label+"» faltan "+missing+" de "+children.length+" probabilidades. No se pueden calcular resultados fiables hasta completarlas.":"“"+node.label+"” has "+missing+" of "+children.length+" probabilities missing. Reliable outcomes cannot be calculated until they are completed.",null,"warning",2);
    }
-   const values=children.map(probability);
-   if(values.every(value=>Number.isFinite(value))&&Math.max(...values)-Math.min(...values)<0.011)add("equal:"+node.id,lang==="es"?"Porcentajes uniformes":"Uniform probabilities",lang==="es"?"Las "+children.length+" opciones tienen el mismo porcentaje ("+values[0].toFixed(2)+" %).":"All "+children.length+" options have the same probability ("+values[0].toFixed(2)+"%).");
    const labels=children.map(child=>normalizePatternLabel(child.label)).filter(Boolean);
-   if(new Set(labels).size<labels.length)add("duplicate:"+node.id,lang==="es"?"Nombres duplicados":"Duplicate names",lang==="es"?"Hay opciones con el mismo nombre dentro del mismo nivel.":"Some options share a name at the same level.");
+   if(labels.length!==children.length||new Set(labels).size!==labels.length){
+    add("ambiguous:"+node.id,lang==="es"?"Opciones difíciles de distinguir":"Ambiguous options",
+     lang==="es"?"Dentro de «"+node.label+"» hay nombres vacíos o repetidos. Esto puede hacer que las rutas sean difíciles de interpretar; renombra las opciones para distinguirlas.":"“"+node.label+"” contains empty or duplicate option names. Rename them so each outcome is distinguishable.",null,"warning",3);
+   }
   }
-  children.forEach(visit);
+  children.forEach(child=>visit(child,path.concat(node.label)));
+  if(node.method==="data"){
+   const f=Number(node.favourable),t=Number(node.total);
+   if(!Number.isFinite(f)||!Number.isFinite(t)||t<=0||f<0||f>t){
+    add("data:"+node.id,lang==="es"?"Datos estadísticos incoherentes":"Inconsistent statistical data",
+     lang==="es"?"«"+node.label+"» tiene casos favorables/total inválidos. Debe cumplirse 0 ≤ favorables ≤ total y total > 0.":"“"+node.label+"” has invalid favourable/total counts. They must satisfy 0 ≤ favourable ≤ total and total > 0.",null,"error",0);
+   }
+  }
  };
  visit(tree);
- // Convert detected structural differences into an actionable completion suggestion.
- walk(tree,group=>{
-  if(group.children.length<2)return;
-  const populated=group.children.filter(branch=>branch.children.length);
+ // Only infer a template when one branch is clearly more complete than all peers.
+ groups.forEach(({node,children})=>{
+  if(children.length<2)return;
+  const populated=children.filter(branch=>branch.children.length>=2);
   if(!populated.length)return;
-  const source=populated.slice().sort((a,b)=>b.children.length-a.children.length)[0];
-  const targets=group.children.filter(branch=>branch.id!==source.id&&source.children.some(option=>
+  const ranked=populated.slice().sort((a,b)=>b.children.length-a.children.length);
+  const source=ranked[0],runnerUp=ranked[1];
+  if(runnerUp&&runnerUp.children.length===source.children.length)return;
+  const sourceLabels=source.children.map(child=>normalizePatternLabel(child.label));
+  if(sourceLabels.some(label=>!label)||new Set(sourceLabels).size!==sourceLabels.length)return;
+  const targets=children.filter(branch=>branch.id!==source.id&&source.children.some(option=>
    !branch.children.some(existing=>normalizePatternLabel(existing.label)===normalizePatternLabel(option.label))
   ));
   if(!targets.length)return;
   const missing=targets.reduce((sum,target)=>sum+source.children.filter(option=>
    !target.children.some(existing=>normalizePatternLabel(existing.label)===normalizePatternLabel(option.label))
   ).length,0);
-  add("apply:"+group.id,lang==="es"?"Patrón aplicable encontrado":"Applicable pattern found",
-   lang==="es"?"La estructura de «"+source.label+"» puede completar "+targets.length+" ramas hermanas ("+missing+" opciones pendientes).":"The structure under “"+source.label+"” can complete "+targets.length+" sibling branches ("+missing+" missing options).",
-   {groupId:group.id,sourceId:source.id,targetIds:targets.map(target=>target.id)});
+  add("apply:"+node.id,lang==="es"?"Estructura repetible":"Repeatable structure",
+   lang==="es"?"«"+source.label+"» tiene una estructura más completa. Faltan "+missing+" opciones equivalentes en "+targets.length+" ramas hermanas. No se modificarán las opciones existentes.":"“"+source.label+"” has the most complete structure. "+missing+" matching options are missing across "+targets.length+" sibling branches. Existing options will not be changed.",
+   {type:"mirror",groupId:node.id,sourceId:source.id,targetIds:targets.map(target=>target.id)},"suggestion",2);
  });
- return findings;
+ // Offer outcome insights only when every conditional distribution is complete and valid.
+ const distributionsValid=groups.every(({children})=>{
+  const values=children.map(probability);
+  return values.every(value=>value!==null&&Number.isFinite(value)&&value>=0&&value<=100)&&Math.abs(values.reduce((a,b)=>a+b,0)-100)<0.01;
+ });
+ if(distributionsValid){
+  const paths=allPaths().filter(path=>path.prob!==null&&Number.isFinite(path.prob));
+  if(paths.length>1){
+   const ranked=paths.slice().sort((a,b)=>b.prob-a.prob);
+   const top=ranked[0],second=ranked[1];
+   add("top-outcome",lang==="es"?"Resultado más probable":"Most likely outcome",
+    lang==="es"?"La ruta más probable es «"+top.labels.slice(1).join(" → ")+"» con "+top.prob.toFixed(2)+" %. La siguiente tiene "+second.prob.toFixed(2)+" %.":"The most likely path is “"+top.labels.slice(1).join(" → ")+"” at "+top.prob.toFixed(2)+"%. The next most likely is "+second.prob.toFixed(2)+"%.",null,"insight",4);
+  }
+ }
+ return findings.sort((a,b)=>a.priority-b.priority);
 }
 function applyPatternAction(action){
+ if(action.type==="normalize"){
+  const node=find(tree,action.nodeId);
+  if(!node||!node.children.length)return;
+  const values=node.children.map(probability);
+  if(values.some(value=>value===null||!Number.isFinite(value)||value<0)||values.reduce((a,b)=>a+b,0)<=0)return;
+  snapshot();
+  const sum=values.reduce((a,b)=>a+b,0);
+  node.children.forEach((child,index)=>{child.p=values[index]/sum*100;child.method="manual"});
+  render();snapshotSoft();
+  toast(lang==="es"?"Porcentajes normalizados conservando sus proporciones":"Probabilities normalized while preserving their proportions");
+  return;
+ }
+ if(action.type!=="mirror")return;
  const group=find(tree,action.groupId),source=group&&find(group,action.sourceId);
  if(!group||!source)return;
  snapshot();
- let added=0,linked=0;
+ let added=0;
  action.targetIds.forEach(targetId=>{
   const target=find(group,targetId);
   if(!target||target.id===source.id)return;
-  const matched=new Set();
   source.children.forEach(sourceOption=>{
-   const sourceKey=sourceOption._mirrorSourceId||sourceOption.id;
-   let existing=target.children.find(child=>child._mirrorSourceId===sourceKey&&!matched.has(child.id));
-   if(!existing)existing=target.children.find(child=>!matched.has(child.id)&&normalizePatternLabel(child.label)===normalizePatternLabel(sourceOption.label));
-   if(existing){
-    matched.add(existing.id);
-    existing._mirrorSourceId=sourceKey;
-    existing._autoGenerated=true;
-    if(projectMode==="copy"||projectMode==="names")existing.label=sourceOption.label;
-    if(projectMode==="copy"){
-     existing.p=sourceOption.p;existing.method=sourceOption.method||"manual";
-     if(sourceOption.method==="data"){existing.favourable=sourceOption.favourable;existing.total=sourceOption.total}
-    }
-    linked++;
-   }else{
-    const copy=makeAutoCopy(sourceOption,source.children.length);
-    if(projectMode==="manual"){copy.p=null;copy.method="manual"}
-    target.children.push(copy);added++;
-   }
+   const key=sourceOption._mirrorSourceId||sourceOption.id;
+   const exists=target.children.some(child=>child._mirrorSourceId===key||normalizePatternLabel(child.label)===normalizePatternLabel(sourceOption.label));
+   if(exists)return;
+   const copy=makeAutoCopy(sourceOption,source.children.length);
+   copy._mirrorSourceId=key;
+   if(projectMode==="manual"){copy.p=null;copy.method="manual"}
+   target.children.push(copy);added++;
   });
   if(projectMode==="equal"&&target.children.length){
    const share=100/target.children.length;
    target.children.forEach(child=>{child.p=share;child.method="manual"});
   }
  });
- render();
- snapshotSoft();
- toast(lang==="es"?"Patrón aplicado: "+added+" opciones añadidas y "+linked+" vinculadas":"Pattern applied: "+added+" options added and "+linked+" linked");
+ render();snapshotSoft();
+ toast(lang==="es"?"Estructura completada: "+added+" opciones añadidas":"Structure completed: "+added+" options added");
 }
 
 function setupPatternPanel(){
@@ -167,8 +203,9 @@ function schedulePatternAnalysis(){
   if(run!==patternAnalysisRun)return;
   const findings=analyzeTreePatterns();
   panel.dataset.state="done";
-  status.textContent=lang==="es"?"Análisis completado · "+findings.length+" patrones detectados":"Analysis complete · "+findings.length+" patterns detected";
-  list.innerHTML=findings.length?findings.map((item,index)=>'<article class="pattern-item"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span>'+(item.action?'<button type="button" class="pattern-apply" data-pattern-action="'+index+'">'+(lang==="es"?"Aplicar patrón":"Apply pattern")+'</button>':'')+'</article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"No se han encontrado patrones claros todavía.":"No clear patterns found yet.")+'</div>';
+  const actionable=findings.filter(item=>item.action).length;
+  status.textContent=findings.length?(lang==="es"?findings.length+" hallazgos relevantes · "+actionable+" acciones disponibles":findings.length+" relevant findings · "+actionable+" available actions"):(lang==="es"?"Sin problemas relevantes detectados":"No relevant issues detected");
+  list.innerHTML=findings.length?findings.map((item,index)=>'<article class="pattern-item pattern-'+item.severity+'"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span>'+(item.action?'<button type="button" class="pattern-apply" data-pattern-action="'+index+'">'+(item.action.type==="normalize"?(lang==="es"?"Normalizar porcentajes":"Normalize probabilities"):(lang==="es"?"Completar estructura":"Complete structure"))+'</button>':'')+'</article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"El árbol no presenta incoherencias relevantes.":"No relevant inconsistencies found in this tree.")+'</div>';
   list.querySelectorAll("[data-pattern-action]").forEach(button=>button.addEventListener("click",()=>{const item=findings[Number(button.dataset.patternAction)];if(item&&item.action)applyPatternAction(item.action)}));
  },90);
 }
