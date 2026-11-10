@@ -55,56 +55,87 @@ function normalizePatternLabel(value){
 }
 function analyzeTreePatterns(){
  const findings=[],seen=new Set();
- const add=(key,title,detail)=>{if(!seen.has(key)){seen.add(key);findings.push({title,detail})}};
+ const add=(key,title,detail,action=null)=>{if(!seen.has(key)){seen.add(key);findings.push({title,detail,action})}};
  const visit=node=>{
   const children=node.children||[];
   if(children.length>=2){
    const active=children.filter(branch=>(branch.children||[]).length>0);
    const empty=children.length-active.length;
-   if(active.length&&empty){
-    add("incomplete:"+node.id,
-     lang==="es"?"Estructura paralela incompleta":"Incomplete parallel structure",
-     lang==="es"?active.length+" de "+children.length+" ramas tienen opciones internas; "+empty+" todavía no.":"Only "+active.length+" of "+children.length+" branches have child options; "+empty+" do not.");
-   }
+   if(active.length&&empty)add("incomplete:"+node.id,lang==="es"?"Estructura paralela incompleta":"Incomplete parallel structure",lang==="es"?active.length+" de "+children.length+" ramas tienen opciones internas; "+empty+" todavía no.":"Only "+active.length+" of "+children.length+" branches have child options; "+empty+" do not.");
    if(active.length>=2){
     const counts=active.map(branch=>branch.children.length);
-    if(counts.every(count=>count===counts[0])){
-     add("shape:"+node.id,
-      lang==="es"?"Estructura repetida":"Repeated structure",
-      lang==="es"?active.length+" ramas hermanas tienen "+counts[0]+" opciones cada una.":" "+active.length+" sibling branches each contain "+counts[0]+" options.");
-    }
+    if(counts.every(count=>count===counts[0]))add("shape:"+node.id,lang==="es"?"Estructura repetida":"Repeated structure",lang==="es"?active.length+" ramas hermanas tienen "+counts[0]+" opciones cada una.":active.length+" sibling branches each contain "+counts[0]+" options.");
     const labelSets=active.map(branch=>new Set(branch.children.map(child=>normalizePatternLabel(child.label)).filter(Boolean)));
     const shared=[...labelSets[0]].filter(label=>labelSets.every(set=>set.has(label)));
-    if(shared.length){
-     add("labels:"+node.id,
-      lang==="es"?"Nombres compartidos":"Shared option names",
-      lang==="es"?"Se repiten en todas las ramas analizadas: "+shared.slice(0,5).join(", ")+".":"Repeated across the analyzed branches: "+shared.slice(0,5).join(", ")+".");
-    }
-    const byPosition=Math.min(...counts);
-    if(byPosition>0&&counts.some(count=>count!==byPosition)){
-     add("counts:"+node.id,
-      lang==="es"?"Número de opciones diferente":"Different option counts",
-      lang==="es"?"Las ramas hermanas no tienen el mismo número de opciones.":"Sibling branches have different numbers of options.");
-    }
+    if(shared.length)add("labels:"+node.id,lang==="es"?"Nombres compartidos":"Shared option names",lang==="es"?"Se repiten en todas las ramas analizadas: "+shared.slice(0,5).join(", ")+".":"Repeated across the analyzed branches: "+shared.slice(0,5).join(", ")+".");
+    if(counts.some(count=>count!==counts[0]))add("counts:"+node.id,lang==="es"?"Número de opciones diferente":"Different option counts",lang==="es"?"Las ramas hermanas no tienen el mismo número de opciones.":"Sibling branches have different numbers of options.");
    }
    const values=children.map(probability);
-   if(values.every(value=>Number.isFinite(value))&&Math.max(...values)-Math.min(...values)<0.011){
-    add("equal:"+node.id,
-     lang==="es"?"Porcentajes uniformes":"Uniform probabilities",
-     lang==="es"?"Las "+children.length+" opciones tienen el mismo porcentaje ("+values[0].toFixed(2)+" %).":"All "+children.length+" options have the same probability ("+values[0].toFixed(2)+"%).");
-   }
+   if(values.every(value=>Number.isFinite(value))&&Math.max(...values)-Math.min(...values)<0.011)add("equal:"+node.id,lang==="es"?"Porcentajes uniformes":"Uniform probabilities",lang==="es"?"Las "+children.length+" opciones tienen el mismo porcentaje ("+values[0].toFixed(2)+" %).":"All "+children.length+" options have the same probability ("+values[0].toFixed(2)+"%).");
    const labels=children.map(child=>normalizePatternLabel(child.label)).filter(Boolean);
-   if(new Set(labels).size<labels.length){
-    add("duplicate:"+node.id,
-     lang==="es"?"Nombres duplicados":"Duplicate names",
-     lang==="es"?"Hay opciones con el mismo nombre dentro del mismo nivel.":"Some options share a name at the same level.");
-   }
+   if(new Set(labels).size<labels.length)add("duplicate:"+node.id,lang==="es"?"Nombres duplicados":"Duplicate names",lang==="es"?"Hay opciones con el mismo nombre dentro del mismo nivel.":"Some options share a name at the same level.");
   }
   children.forEach(visit);
  };
  visit(tree);
+ // Convert detected structural differences into an actionable completion suggestion.
+ walk(tree,group=>{
+  if(group.children.length<2)return;
+  const populated=group.children.filter(branch=>branch.children.length);
+  if(!populated.length)return;
+  const source=populated.slice().sort((a,b)=>b.children.length-a.children.length)[0];
+  const targets=group.children.filter(branch=>branch.id!==source.id&&source.children.some(option=>
+   !branch.children.some(existing=>normalizePatternLabel(existing.label)===normalizePatternLabel(option.label))
+  ));
+  if(!targets.length)return;
+  const missing=targets.reduce((sum,target)=>sum+source.children.filter(option=>
+   !target.children.some(existing=>normalizePatternLabel(existing.label)===normalizePatternLabel(option.label))
+  ).length,0);
+  add("apply:"+group.id,lang==="es"?"Patrón aplicable encontrado":"Applicable pattern found",
+   lang==="es"?"La estructura de «"+source.label+"» puede completar "+targets.length+" ramas hermanas ("+missing+" opciones pendientes).":"The structure under “"+source.label+"” can complete "+targets.length+" sibling branches ("+missing+" missing options).",
+   {groupId:group.id,sourceId:source.id,targetIds:targets.map(target=>target.id)});
+ });
  return findings;
 }
+function applyPatternAction(action){
+ const group=find(tree,action.groupId),source=group&&find(group,action.sourceId);
+ if(!group||!source)return;
+ snapshot();
+ let added=0,linked=0;
+ action.targetIds.forEach(targetId=>{
+  const target=find(group,targetId);
+  if(!target||target.id===source.id)return;
+  const matched=new Set();
+  source.children.forEach(sourceOption=>{
+   const sourceKey=sourceOption._mirrorSourceId||sourceOption.id;
+   let existing=target.children.find(child=>child._mirrorSourceId===sourceKey&&!matched.has(child.id));
+   if(!existing)existing=target.children.find(child=>!matched.has(child.id)&&normalizePatternLabel(child.label)===normalizePatternLabel(sourceOption.label));
+   if(existing){
+    matched.add(existing.id);
+    existing._mirrorSourceId=sourceKey;
+    existing._autoGenerated=true;
+    if(projectMode==="copy"||projectMode==="names")existing.label=sourceOption.label;
+    if(projectMode==="copy"){
+     existing.p=sourceOption.p;existing.method=sourceOption.method||"manual";
+     if(sourceOption.method==="data"){existing.favourable=sourceOption.favourable;existing.total=sourceOption.total}
+    }
+    linked++;
+   }else{
+    const copy=makeAutoCopy(sourceOption,source.children.length);
+    if(projectMode==="manual"){copy.p=null;copy.method="manual"}
+    target.children.push(copy);added++;
+   }
+  });
+  if(projectMode==="equal"&&target.children.length){
+   const share=100/target.children.length;
+   target.children.forEach(child=>{child.p=share;child.method="manual"});
+  }
+ });
+ render();
+ snapshotSoft();
+ toast(lang==="es"?"Patrón aplicado: "+added+" opciones añadidas y "+linked+" vinculadas":"Pattern applied: "+added+" options added and "+linked+" linked");
+}
+
 function setupPatternPanel(){
  const panel=$("patternAssistant"),button=$("patternToggle");
  if(!panel||!button)return;
@@ -137,7 +168,8 @@ function schedulePatternAnalysis(){
   const findings=analyzeTreePatterns();
   panel.dataset.state="done";
   status.textContent=lang==="es"?"Análisis completado · "+findings.length+" patrones detectados":"Analysis complete · "+findings.length+" patterns detected";
-  list.innerHTML=findings.length?findings.map(item=>'<article class="pattern-item"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span></article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"No se han encontrado patrones claros todavía.":"No clear patterns found yet.")+'</div>';
+  list.innerHTML=findings.length?findings.map((item,index)=>'<article class="pattern-item"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span>'+(item.action?'<button type="button" class="pattern-apply" data-pattern-action="'+index+'">'+(lang==="es"?"Aplicar patrón":"Apply pattern")+'</button>':'')+'</article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"No se han encontrado patrones claros todavía.":"No clear patterns found yet.")+'</div>';
+  list.querySelectorAll("[data-pattern-action]").forEach(button=>button.addEventListener("click",()=>{const item=findings[Number(button.dataset.patternAction)];if(item&&item.action)applyPatternAction(item.action)}));
  },90);
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
