@@ -8,6 +8,15 @@ let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulat
 let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
+let openCodeSessionId="";
+function getOpenCodeSessionId(){
+ if(openCodeSessionId)return openCodeSessionId;
+ try{
+  openCodeSessionId=sessionStorage.getItem("branch-opencode-session-v1")||"";
+  if(!openCodeSessionId){const random=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+"-"+Math.random().toString(36).slice(2);openCodeSessionId="ses_"+random.replace(/[^a-zA-Z0-9_-]/g,"");sessionStorage.setItem("branch-opencode-session-v1",openCodeSessionId)}
+ }catch(_){openCodeSessionId="ses_"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}
+ return openCodeSessionId;
+}
 let pendingAITree=null;
 const ZEN_MODEL="muse-spark-1.3-contributor";
 const ZEN_ENDPOINT="https://branch-ai-proxy.eric-silvestre.workers.dev/api/ai";
@@ -57,7 +66,7 @@ function describeAIError(error){
 }
 async function callZen(messages,key=zenKey,maxTokens=2500){
  if(!key)throw new Error(lang==="es"?"Falta la API Key de OpenCode Go.":"OpenCode Go API key is missing.");
- const response=await fetch(ZEN_ENDPOINT,{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:ZEN_MODEL,messages,temperature:0.2,max_tokens:maxTokens})});
+ const response=await fetch(ZEN_ENDPOINT,{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json","x-opencode-session":getOpenCodeSessionId()},body:JSON.stringify({model:ZEN_MODEL,messages,temperature:0.2,max_tokens:maxTokens})});
  const raw=await response.text();
  let data;try{data=JSON.parse(raw)}catch(_){throw new Error("Respuesta no válida de OpenCode Go (HTTP "+response.status+").")}
  if(!response.ok)throw new Error("HTTP "+response.status+": "+(data.error?.message||data.message||raw.slice(0,300)));
