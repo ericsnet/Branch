@@ -53,6 +53,10 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":
 function addBranch(parentId){
  let p=find(tree,parentId);if(!p)return;snapshot();
  let initialProbability=p.children.length?null:50;
+ if(projectMode==="copy"&&p.children.length){
+  const existing=p.children.map(probability);
+  initialProbability=existing.every(value=>value!==null&&Number.isFinite(value))?Math.max(0,100-existing.reduce((sum,value)=>sum+value,0)):null;
+ }
  if(projectMode==="equal")initialProbability=100/(p.children.length+1);
  let n=makeNode(id(),lang==="es"?"Nueva opción":"New option",initialProbability);
  n.p=initialProbability;p.children.push(n);
