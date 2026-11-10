@@ -44,14 +44,18 @@
  <main class="main-content">
   <div class="page-heading"><div><div class="eyebrow" data-i18n="probabilityWorkspace">PROBABILITY WORKSPACE</div><h1 id="pageTitle" data-i18n="treeEditor">Editor de árbol</h1><p data-i18n="pageSubtitle">Construye escenarios, asigna probabilidades y entiende cada resultado.</p></div><div class="heading-tools"><button class="small-btn" id="undoBtn" title="Undo">↶</button><button class="small-btn" id="redoBtn" title="Redo">↷</button><button class="small-btn" id="shareBtn" data-i18n="share">Compartir</button></div></div>
   <section id="editorView">
-   <div class="toolbar"><div class="toolbar-left"><span class="live-dot"></span><span data-i18n="liveCalculation">Cálculo en tiempo real</span><span class="divider-v"></span><span id="branchCount">2 ramas</span></div><div class="toolbar-right"><button class="text-btn" id="fitBtn" data-i18n="fitView">Ajustar vista</button><button class="text-btn" id="clearBtn" data-i18n="clear">Limpiar</button></div></div>
+   <div class="quick-guide" aria-label="Guía rápida">
+    <div class="guide-heading"><strong data-i18n="guideTitle">Empieza en 3 pasos</strong><span data-i18n="guideIntro">No necesitas configurar nada antes de empezar.</span></div>
+    <ol><li data-i18n="guideStep1">Selecciona un nodo para editar su nombre.</li><li data-i18n="guideStep2">Pulsa + o «Añadir rama» para crear opciones.</li><li data-i18n="guideStep3">Asigna porcentajes; las ramas del mismo nodo deben sumar 100 %.</li></ol>
+   </div>
+   <div class="toolbar"><div class="toolbar-left"><span class="live-dot"></span><span data-i18n="liveCalculation">Cálculo en tiempo real</span><span class="divider-v"></span><span id="branchCount">2 ramas</span></div><div class="toolbar-right"><button class="secondary-btn" id="addBranchQuickBtn" data-i18n="addBranchAction">＋ Añadir rama</button><button class="text-btn" id="fitBtn" data-i18n="fitView">Ajustar vista</button><button class="text-btn" id="clearBtn" data-i18n="clear">Limpiar</button></div></div>
    <div class="canvas-wrap"><div class="canvas-grid"></div><svg id="treeSvg" role="img" aria-label="Probability tree diagram"></svg><div class="canvas-hint" data-i18n="canvasHint">Selecciona un nodo para editarlo · Pulsa + para añadir ramas</div></div>
    <div class="editor-lower">
     <section class="panel inspector"><div class="panel-title"><div><span class="eyebrow" data-i18n="selection">SELECCIÓN</span><h2 data-i18n="nodeProperties">Propiedades del nodo</h2></div><span class="pill" id="selectedType">RAÍZ</span></div>
      <div id="emptyInspector" class="empty-state" data-i18n="selectNode">Selecciona un nodo o una rama del árbol.</div>
      <div id="nodeInspector" hidden>
-      <label data-i18n="label">Nombre</label><input id="nodeLabel" class="field">
-      <div id="branchFields"><div class="field-row"><div><label data-i18n="probability">Probabilidad</label><div class="input-with-suffix"><input id="probability" class="field" type="number" min="0" max="100" step="0.1"><span>%</span></div></div><div><label data-i18n="inputMethod">Método</label><select id="probMethod" class="field"><option value="manual">Manual</option><option value="data">Datos</option></select></div></div>
+      <label data-i18n="label">Nombre</label><input id="nodeLabel" class="field" aria-describedby="nodeEditHelp"><p class="field-help" id="nodeEditHelp" data-i18n="nodeHelp">Haz clic en un nodo del diagrama para editarlo.</p>
+      <div id="branchFields"><div class="field-row"><div><label data-i18n="probability">Probabilidad</label><div class="input-with-suffix"><input id="probability" class="field" type="number" min="0" max="100" step="0.1" aria-describedby="probabilityHelp"><span>%</span></div><p class="field-help" id="probabilityHelp" data-i18n="probabilityHelp">Las opciones que salen del mismo nodo deben sumar 100 %.</p></div><div><label data-i18n="inputMethod">Método</label><select id="probMethod" class="field"><option value="manual">Manual</option><option value="data">Datos</option></select></div></div>
        <div id="dataFields" class="field-row" hidden><div><label data-i18n="favourable">Favorables</label><input id="favourable" class="field" type="number" min="0"></div><div><label data-i18n="total">Total de casos</label><input id="total" class="field" type="number" min="1"></div></div>
       </div>
       <label data-i18n="notes">Notas</label><textarea id="nodeNotes" class="field" rows="2" placeholder="..."></textarea>
@@ -68,6 +72,6 @@
  </main>
 </div>
 <div class="modal-backdrop" id="modal" hidden><div class="modal"><div class="modal-head"><h2 id="modalTitle">Exportar</h2><button class="small-btn" id="closeModal">×</button></div><div id="modalBody"></div></div></div>
-<div class="toast" id="toast" role="status"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="app.js"></script>
 </body></html>
