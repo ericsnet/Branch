@@ -116,3 +116,9 @@ body.printing-tree>#printArea{display:block!important;width:100%;padding:0;margi
 @keyframes patternPulse{from{opacity:.45;transform:scale(.88)}to{opacity:1;transform:scale(1.08)}}
 html[data-theme="dark"] .pattern-item,html[data-theme="dark"] .pattern-placeholder{border-color:var(--line)}
 @media(prefers-reduced-motion:reduce){.pattern-assistant[data-state="working"] .pattern-indicator{animation:none}}
+
+.pattern-toggle{margin-left:8px;flex-shrink:0;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:6px 9px;font:600 10px "DM Sans";cursor:pointer}
+.pattern-toggle:hover{background:var(--accent-soft);color:var(--text)}
+.pattern-assistant.is-collapsed{padding-bottom:12px}
+.pattern-assistant.is-collapsed #patternDetails{display:none}
+.pattern-assistant.is-collapsed .pattern-head{min-height:30px}
