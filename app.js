@@ -34,7 +34,7 @@ function allPaths(n=tree,path=[],nodeIds=[],prob=100){
  return out
 }
 function walk(n,fn){fn(n);n.children.forEach(c=>walk(c,fn))}
-function render(){ $("projectName").value=projectName;drawTree();renderInspector();renderValidation();$("branchCount").textContent=countNodes(tree)-1+" "+t("branches");if(view==="stats")renderStats(); }
+function render(){ $("projectName").value=projectName;drawTree();renderInspector();renderValidation();$("branchCount").textContent=countNodes(tree)-1+" "+t("branches");if(view==="stats")renderStats();schedulePatternAnalysis(); }
 function countNodes(n){return 1+n.children.reduce((s,c)=>s+countNodes(c),0)}
 function drawTree(){
  const svg=$("treeSvg"),W=svg.clientWidth||900,H=svg.clientHeight||460;svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.innerHTML="";
@@ -49,6 +49,78 @@ function drawTree(){
 function renderInspector(){let n=find(tree,selected);$("emptyInspector").hidden=!!n;$("nodeInspector").hidden=!n;if(!n)return;$("selectedType").textContent=n.id==="root"?t("root").toUpperCase():t("branch").toUpperCase();$("nodeLabel").value=n.label;$("nodeNotes").value=n.notes||"";$("branchFields").hidden=n.id==="root";$("probability").value=n.p??"";$("probMethod").value=n.method||"manual";$("dataFields").hidden=n.method!=="data";$("favourable").value=n.favourable??1;$("total").value=n.total??2;document.querySelectorAll(".swatches button").forEach(b=>b.classList.toggle("selected",b.dataset.color===n.color))}
 function renderValidation(){let warnings=[];walk(tree,n=>{if(n.children.length){let vals=n.children.map(probability);if(vals.some(x=>x===null||!Number.isFinite(x)))warnings.push(t("missing"));else{let sum=vals.reduce((a,b)=>a+b,0);if(sum>100.001)warnings.push(t("over")+" ("+sum.toFixed(1)+" %).");else if(sum<99.999)warnings.push(t("under")+" ("+sum.toFixed(1)+" %).")}}});$("validationCount").textContent=warnings.length;$("validationCount").className="pill "+(warnings.length?"":"green-pill");$("validationList").innerHTML=warnings.length?warnings.map(w=>'<div class="validation-item"><span class="v-icon">!</span><span>'+escapeHtml(w)+'</span></div>').join(''):'<div class="validation-item ok"><span class="v-icon">✓</span><span>'+escapeHtml(t("allGood"))+'</span></div>'}
 function renderStats(){let paths=allPaths();let valid=paths.filter(p=>p.prob!==null);let total=valid.reduce((s,p)=>s+p.prob,0);$("statsCards").innerHTML=[["Σ P",total.toFixed(2)+"%"],[t("outcomesCount"),paths.length],[t("nodes"),countNodes(tree)]].map(x=>'<div class="stat-card"><span>'+escapeHtml(x[0])+'</span><strong>'+escapeHtml(String(x[1]))+'</strong></div>').join("");$("outcomeRows").innerHTML=paths.length?paths.map(p=>'<tr><td>'+escapeHtml(p.labels.join(" → "))+'</td><td>'+ (p.prob===null?"—":p.prob.toFixed(3)+"%")+'</td><td>'+ (p.prob===null?"—":p.prob.toFixed(3)+"%")+'</td></tr>').join(""):'<tr><td colspan="3">'+t("noOutcomes")+'</td></tr>'}
+let patternAnalysisTimer=null,patternAnalysisRun=0;
+function normalizePatternLabel(value){
+ return String(value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+}
+function analyzeTreePatterns(){
+ const findings=[],seen=new Set();
+ const add=(key,title,detail)=>{if(!seen.has(key)){seen.add(key);findings.push({title,detail})}};
+ const visit=node=>{
+  const children=node.children||[];
+  if(children.length>=2){
+   const active=children.filter(branch=>(branch.children||[]).length>0);
+   const empty=children.length-active.length;
+   if(active.length&&empty){
+    add("incomplete:"+node.id,
+     lang==="es"?"Estructura paralela incompleta":"Incomplete parallel structure",
+     lang==="es"?active.length+" de "+children.length+" ramas tienen opciones internas; "+empty+" todavía no.":"Only "+active.length+" of "+children.length+" branches have child options; "+empty+" do not.");
+   }
+   if(active.length>=2){
+    const counts=active.map(branch=>branch.children.length);
+    if(counts.every(count=>count===counts[0])){
+     add("shape:"+node.id,
+      lang==="es"?"Estructura repetida":"Repeated structure",
+      lang==="es"?active.length+" ramas hermanas tienen "+counts[0]+" opciones cada una.":" "+active.length+" sibling branches each contain "+counts[0]+" options.");
+    }
+    const labelSets=active.map(branch=>new Set(branch.children.map(child=>normalizePatternLabel(child.label)).filter(Boolean)));
+    const shared=[...labelSets[0]].filter(label=>labelSets.every(set=>set.has(label)));
+    if(shared.length){
+     add("labels:"+node.id,
+      lang==="es"?"Nombres compartidos":"Shared option names",
+      lang==="es"?"Se repiten en todas las ramas analizadas: "+shared.slice(0,5).join(", ")+".":"Repeated across the analyzed branches: "+shared.slice(0,5).join(", ")+".");
+    }
+    const byPosition=Math.min(...counts);
+    if(byPosition>0&&counts.some(count=>count!==byPosition)){
+     add("counts:"+node.id,
+      lang==="es"?"Número de opciones diferente":"Different option counts",
+      lang==="es"?"Las ramas hermanas no tienen el mismo número de opciones.":"Sibling branches have different numbers of options.");
+    }
+   }
+   const values=children.map(probability);
+   if(values.every(value=>Number.isFinite(value))&&Math.max(...values)-Math.min(...values)<0.011){
+    add("equal:"+node.id,
+     lang==="es"?"Porcentajes uniformes":"Uniform probabilities",
+     lang==="es"?"Las "+children.length+" opciones tienen el mismo porcentaje ("+values[0].toFixed(2)+" %).":"All "+children.length+" options have the same probability ("+values[0].toFixed(2)+"%).");
+   }
+   const labels=children.map(child=>normalizePatternLabel(child.label)).filter(Boolean);
+   if(new Set(labels).size<labels.length){
+    add("duplicate:"+node.id,
+     lang==="es"?"Nombres duplicados":"Duplicate names",
+     lang==="es"?"Hay opciones con el mismo nombre dentro del mismo nivel.":"Some options share a name at the same level.");
+   }
+  }
+  children.forEach(visit);
+ };
+ visit(tree);
+ return findings;
+}
+function schedulePatternAnalysis(){
+ const panel=$("patternAssistant"),status=$("patternStatus"),list=$("patternFindings");
+ if(!panel||!status||!list)return;
+ clearTimeout(patternAnalysisTimer);
+ const run=++patternAnalysisRun;
+ panel.dataset.state="working";
+ status.textContent=lang==="es"?"Analizando estructura y comparando ramas…":"Analyzing structure and comparing branches…";
+ list.innerHTML='<div class="pattern-placeholder">'+(lang==="es"?"Revisando nombres, niveles y probabilidades.":"Checking labels, levels and probabilities.")+'</div>';
+ patternAnalysisTimer=setTimeout(()=>{
+  if(run!==patternAnalysisRun)return;
+  const findings=analyzeTreePatterns();
+  panel.dataset.state="done";
+  status.textContent=lang==="es"?"Análisis completado · "+findings.length+" patrones detectados":"Analysis complete · "+findings.length+" patterns detected";
+  list.innerHTML=findings.length?findings.map(item=>'<article class="pattern-item"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span></article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"No se han encontrado patrones claros todavía.":"No clear patterns found yet.")+'</div>';
+ },90);
+}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function addBranch(parentId){
  const parent=find(tree,parentId);
@@ -206,12 +278,12 @@ function syncAutoGeneratedPeers(source){
   }
  });
 }
-$("nodeLabel").addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n.label=e.target.value;syncAutoGeneratedPeers(n);drawTree();renderValidation();snapshotSoft()}});
+$("nodeLabel").addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n.label=e.target.value;syncAutoGeneratedPeers(n);drawTree();renderValidation();schedulePatternAnalysis();snapshotSoft()}});
 $("nodeNotes").addEventListener("input",e=>{let n=find(tree,selected);if(n)n.notes=e.target.value});
-$("probability").addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n.p=e.target.value===""?null:Number(e.target.value);syncAutoGeneratedPeers(n);snapshotSoft();drawTree();renderValidation()}});
+$("probability").addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n.p=e.target.value===""?null:Number(e.target.value);syncAutoGeneratedPeers(n);snapshotSoft();drawTree();renderValidation();schedulePatternAnalysis()}});
 function snapshotSoft(){clearTimeout(window._branchSave);window._branchSave=setTimeout(()=>localStorage.setItem("branch-project",JSON.stringify({tree,projectName,orientation,projectMode})),500)}
 $("probMethod").addEventListener("change",e=>{let n=find(tree,selected);if(n){n.method=e.target.value;$("dataFields").hidden=n.method!=="data";render() }});
-["favourable","total"].forEach(id=>$(id).addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n[id]=Number(e.target.value);n.p=probability(n);$("probability").value=n.p.toFixed(2);syncAutoGeneratedPeers(n);drawTree();renderValidation();snapshotSoft()}}));
+["favourable","total"].forEach(id=>$(id).addEventListener("input",e=>{let n=find(tree,selected);if(n){n._autoGenerated=false;n[id]=Number(e.target.value);n.p=probability(n);$("probability").value=n.p.toFixed(2);syncAutoGeneratedPeers(n);drawTree();renderValidation();schedulePatternAnalysis();snapshotSoft()}}));
 $("swatches").addEventListener("click",e=>{let b=e.target.closest("button[data-color]");if(!b)return;let n=find(tree,selected);if(n){n.color=b.dataset.color;renderInspector();drawTree()}});
 $("addBranchBtn").onclick=()=>addBranch(selected);$("addBranchQuickBtn").onclick=()=>addBranch(selected);
 function rebalanceBranchProbabilities(branch){
