@@ -96,3 +96,23 @@ body.printing-tree>#printArea{display:block!important;width:100%;padding:0;margi
 }
 
 .project-automation{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,320px);align-items:center;gap:6px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:0 0 12px}.project-automation>label{margin:0;font-size:11px;font-weight:700;color:var(--text)}.project-automation .field-help{grid-column:1/-1;margin:0}.project-automation select{max-width:100%}html[data-theme="dark"] .project-automation{background:#202521;border-color:var(--line)}@media(max-width:650px){.project-automation{grid-template-columns:1fr;gap:7px}.project-automation .field-help{grid-column:auto}}
+
+/* Local pattern-analysis assistant */
+.pattern-assistant{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin:0 0 12px;min-width:0}
+.pattern-head{display:flex;align-items:center;gap:10px}
+.pattern-mark{width:29px;height:29px;display:grid;place-items:center;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-size:17px}
+.pattern-heading{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pattern-heading strong{font:700 11px Manrope,sans-serif;color:var(--text)}
+.pattern-heading span{font-size:10px;color:var(--muted)}
+.pattern-indicator{margin-left:auto;width:8px;height:8px;border-radius:50%;background:#8b9b8e;flex-shrink:0}
+.pattern-assistant[data-state="working"] .pattern-indicator{background:#d39a4a;box-shadow:0 0 0 4px #d39a4a20;animation:patternPulse .8s ease-in-out infinite alternate}
+.pattern-assistant[data-state="done"] .pattern-indicator{background:#6f9a78}
+.pattern-findings{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;margin-top:10px}
+.pattern-item,.pattern-placeholder{border:1px solid var(--line);border-radius:7px;padding:9px 10px;min-width:0}
+.pattern-item{display:flex;flex-direction:column;gap:4px}
+.pattern-item strong{font-size:10px;color:var(--text)}
+.pattern-item span,.pattern-placeholder{font-size:10px;line-height:1.45;color:var(--muted);overflow-wrap:anywhere}
+.pattern-footnote{margin:8px 0 0;font-size:9px;color:var(--muted)}
+@keyframes patternPulse{from{opacity:.45;transform:scale(.88)}to{opacity:1;transform:scale(1.08)}}
+html[data-theme="dark"] .pattern-item,html[data-theme="dark"] .pattern-placeholder{border-color:var(--line)}
+@media(prefers-reduced-motion:reduce){.pattern-assistant[data-state="working"] .pattern-indicator{animation:none}}
