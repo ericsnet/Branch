@@ -8,6 +8,7 @@ let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulat
 let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
+let zenVerified=false;
 let openCodeSessionId="";
 function getOpenCodeSessionId(){
  if(openCodeSessionId)return openCodeSessionId;
@@ -22,17 +23,25 @@ const ZEN_MODEL="glm-5.3-flash";
 const ZEN_ENDPOINT="https://branch-ai-proxy.eric-silvestre.workers.dev/api/ai";
 function loadZenSettings(){
  try{
+  zenVerified=sessionStorage.getItem("branch-zen-verified")==="true";
   zenKey=sessionStorage.getItem("branch-zen-key")||localStorage.getItem("branch-zen-key")||"";
   zenRemember=!!localStorage.getItem("branch-zen-key");
  }catch(_){zenKey="";zenRemember=false}
 }
 function saveZenSettings(key,remember){
- zenKey=String(key||"").trim();zenRemember=!!remember;
+ const nextKey=String(key||"").trim();
+ if(nextKey!==zenKey){zenVerified=false;try{sessionStorage.removeItem("branch-zen-verified")}catch(_){}}
+ zenKey=nextKey;zenRemember=!!remember;
  try{
   sessionStorage.removeItem("branch-zen-key");localStorage.removeItem("branch-zen-key");
   if(zenKey){if(zenRemember)localStorage.setItem("branch-zen-key",zenKey);else sessionStorage.setItem("branch-zen-key",zenKey)}
  }catch(_){throw new Error("El navegador no permite guardar la configuración")}
  updateAIStatus();
+ updatePatternVisibility();
+}
+function updatePatternVisibility(){
+ const panel=$("patternAssistant");
+ if(panel)panel.hidden=zenVerified;
 }
 function updateAIStatus(message){
  const el=$("aiStatus");if(!el)return;
@@ -54,7 +63,7 @@ function openAISettings(){
  $("toggleZenKey").onclick=()=>{const input=$("zenApiKey");input.type=input.type==="password"?"text":"password";$("toggleZenKey").textContent=input.type==="password"?(lang==="es"?"Mostrar":"Show"):(lang==="es"?"Ocultar":"Hide")};
  $("saveZenBtn").onclick=()=>{try{saveZenSettings($("zenApiKey").value,$("rememberZenKey").checked);$("modal").hidden=true;toast(lang==="es"?"Configuración guardada":"Settings saved")}catch(e){$("zenSettingsStatus").textContent=e.message}};
  $("removeZenKeyBtn").onclick=()=>{saveZenSettings("",false);$("zenApiKey").value="";$("rememberZenKey").checked=false;$("zenSettingsStatus").textContent=lang==="es"?"Clave eliminada de este navegador.":"Key removed from this browser."};
- $("testZenBtn").onclick=async()=>{const key=$("zenApiKey").value.trim();const status=$("zenSettingsStatus");if(!key){status.textContent=lang==="es"?"Introduce primero la API Key.":"Enter the API key first.";return}status.textContent=lang==="es"?"Probando conexión…":"Testing connection…";$("testZenBtn").disabled=true;try{await callZen([{role:"user",content:"Reply with exactly: BRANCH_OK"}],key,80);status.textContent=lang==="es"?"Conexión correcta.":"Connection successful."}catch(e){status.textContent=describeAIError(e)}finally{$("testZenBtn").disabled=false}};
+ $("testZenBtn").onclick=async()=>{const key=$("zenApiKey").value.trim();const status=$("zenSettingsStatus");if(!key){status.textContent=lang==="es"?"Introduce primero la API Key.":"Enter the API key first.";return}status.textContent=lang==="es"?"Probando conexión…":"Testing connection…";$("testZenBtn").disabled=true;try{await callZen([{role:"user",content:"Reply with exactly: BRANCH_OK"}],key,80);zenVerified=true;try{sessionStorage.setItem("branch-zen-verified","true")}catch(_){};updatePatternVisibility();status.textContent=lang==="es"?"Conexión correcta. Branch Intelligence se ha desactivado.":"Connection successful. Branch Intelligence has been disabled."}catch(e){zenVerified=false;try{sessionStorage.removeItem("branch-zen-verified")}catch(_){};updatePatternVisibility();status.textContent=describeAIError(e)}finally{$("testZenBtn").disabled=false}};
 }
 function describeAIError(error){
  const raw=String(error&&error.message||error||"Error desconocido");
@@ -669,5 +678,5 @@ $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.string
 $("statsLevel").onchange=renderStats;
 try{let saved=localStorage.getItem("branch-project");if(saved){let s=JSON.parse(saved);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual"}}catch(_){}
 if(location.hash.startsWith("#data=")){try{let d=decodeURIComponent(escape(atob(location.hash.slice(6))));let s=JSON.parse(d);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual";history.replaceState(null,"",location.pathname)}catch(_){}}
-window.addEventListener("resize",drawTree);loadZenSettings();const updatePatternToggle=setupPatternPanel();applyTheme();render();renderProjectMode();localize();updateAIStatus();if(updatePatternToggle)updatePatternToggle();
+window.addEventListener("resize",drawTree);loadZenSettings();const updatePatternToggle=setupPatternPanel();updatePatternVisibility();applyTheme();render();renderProjectMode();localize();updateAIStatus();if(updatePatternToggle)updatePatternToggle();
 })();
