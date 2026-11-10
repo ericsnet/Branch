@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f7f5"><meta name="description" content="Branch: editor de árboles de probabilidad y simulación estadística.">
+<title>Branch — Probability trees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+ <a class="brand" href="#" aria-label="Branch home"><span class="brand-mark">b.</span><span>branch</span></a>
+ <div class="project-name"><span class="muted" data-i18n="project">Proyecto</span><input id="projectName" value="Mi primer árbol" aria-label="Project name"></div>
+ <div class="top-actions">
+  <button class="icon-btn" id="langBtn" title="Change language">ES</button>
+  <button class="icon-btn" id="orientationBtn" title="Change orientation">↔ <span data-i18n="horizontal">Horizontal</span></button>
+  <button class="secondary-btn" id="saveBtn" data-i18n="save">Guardar</button>
+  <button class="primary-btn" id="exportBtn" data-i18n="export">Exportar</button>
+ </div>
+</header>
+<div class="app-shell">
+ <aside class="sidebar">
+  <div class="side-section">
+   <div class="side-label" data-i18n="workspace">ESPACIO DE TRABAJO</div>
+   <button class="nav-item active" id="editorTab"><span>⌘</span><span data-i18n="editor">Editor</span></button>
+   <button class="nav-item" id="statsTab"><span>▥</span><span data-i18n="statistics">Estadísticas</span></button>
+   <button class="nav-item" id="simulationTab"><span>◷</span><span data-i18n="simulation">Simulación</span></button>
+  </div>
+  <div class="side-section">
+   <div class="side-label" data-i18n="tree">ÁRBOL</div>
+   <div class="tree-meta"><span class="status-dot"></span><span id="treeStatus" data-i18n="localSaved">Guardado localmente</span></div>
+   <button class="nav-item" id="addBranchBtn"><span>＋</span><span data-i18n="addBranch">Añadir rama</span></button>
+   <button class="nav-item" id="templateBtn"><span>▤</span><span data-i18n="templates">Plantillas</span></button>
+   <button class="nav-item" id="importBtn"><span>↥</span><span data-i18n="import">Importar proyecto</span></button>
+   <input type="file" id="fileInput" accept=".json,application/json" hidden>
+  </div>
+  <div class="side-bottom">
+   <div class="help-card"><div class="help-icon">✳</div><strong data-i18n="quickTip">Consejo rápido</strong><p data-i18n="tipText">Las probabilidades de las ramas de un mismo nodo deberían sumar el 100 %.</p></div>
+   <div class="side-footer">BRANCH <span>v0.1.0</span></div>
+  </div>
+ </aside>
+ <main class="main-content">
+  <div class="page-heading"><div><div class="eyebrow" data-i18n="probabilityWorkspace">PROBABILITY WORKSPACE</div><h1 id="pageTitle" data-i18n="treeEditor">Editor de árbol</h1><p data-i18n="pageSubtitle">Construye escenarios, asigna probabilidades y entiende cada resultado.</p></div><div class="heading-tools"><button class="small-btn" id="undoBtn" title="Undo">↶</button><button class="small-btn" id="redoBtn" title="Redo">↷</button><button class="small-btn" id="shareBtn" data-i18n="share">Compartir</button></div></div>
+  <section id="editorView">
+   <div class="toolbar"><div class="toolbar-left"><span class="live-dot"></span><span data-i18n="liveCalculation">Cálculo en tiempo real</span><span class="divider-v"></span><span id="branchCount">2 ramas</span></div><div class="toolbar-right"><button class="text-btn" id="fitBtn" data-i18n="fitView">Ajustar vista</button><button class="text-btn" id="clearBtn" data-i18n="clear">Limpiar</button></div></div>
+   <div class="canvas-wrap"><div class="canvas-grid"></div><svg id="treeSvg" role="img" aria-label="Probability tree diagram"></svg><div class="canvas-hint" data-i18n="canvasHint">Selecciona un nodo para editarlo · Pulsa + para añadir ramas</div></div>
+   <div class="editor-lower">
+    <section class="panel inspector"><div class="panel-title"><div><span class="eyebrow" data-i18n="selection">SELECCIÓN</span><h2 data-i18n="nodeProperties">Propiedades del nodo</h2></div><span class="pill" id="selectedType">RAÍZ</span></div>
+     <div id="emptyInspector" class="empty-state" data-i18n="selectNode">Selecciona un nodo o una rama del árbol.</div>
+     <div id="nodeInspector" hidden>
+      <label data-i18n="label">Nombre</label><input id="nodeLabel" class="field">
+      <div id="branchFields"><div class="field-row"><div><label data-i18n="probability">Probabilidad</label><div class="input-with-suffix"><input id="probability" class="field" type="number" min="0" max="100" step="0.1"><span>%</span></div></div><div><label data-i18n="inputMethod">Método</label><select id="probMethod" class="field"><option value="manual">Manual</option><option value="data">Datos</option></select></div></div>
+       <div id="dataFields" class="field-row" hidden><div><label data-i18n="favourable">Favorables</label><input id="favourable" class="field" type="number" min="0"></div><div><label data-i18n="total">Total de casos</label><input id="total" class="field" type="number" min="1"></div></div>
+      </div>
+      <label data-i18n="notes">Notas</label><textarea id="nodeNotes" class="field" rows="2" placeholder="..."></textarea>
+      <label data-i18n="color">Color</label><div class="swatches" id="swatches"><button data-color="#6e8f7a" style="--sw:#6e8f7a"></button><button data-color="#7c83bd" style="--sw:#7c83bd"></button><button data-color="#c18b58" style="--sw:#c18b58"></button><button data-color="#c87575" style="--sw:#c87575"></button><button data-color="#5797a2" style="--sw:#5797a2"></button><button data-color="#888888" style="--sw:#888888"></button></div>
+      <div class="inspector-actions"><button class="secondary-btn" id="duplicateBtn" data-i18n="duplicate">Duplicar</button><button class="danger-btn" id="deleteBtn" data-i18n="delete">Eliminar</button></div>
+     </div>
+    </section>
+    <section class="panel validation"><div class="panel-title"><div><span class="eyebrow" data-i18n="qualityCheck">QUALITY CHECK</span><h2 data-i18n="validation">Validación</h2></div><span id="validationCount" class="pill green-pill">0</span></div><div id="validationList" class="validation-list"></div></section>
+   </div>
+  </section>
+  <section id="statsView" hidden><div class="stats-grid" id="statsCards"></div><section class="panel"><div class="panel-title"><div><span class="eyebrow" data-i18n="outcomes">OUTCOMES</span><h2 data-i18n="finalOutcomes">Resultados finales</h2></div><select id="statsLevel" class="field compact"><option value="basic">Básico</option><option value="intermediate">Intermedio</option><option value="advanced">Avanzado</option><option value="full">Completo</option></select></div><div class="table-wrap"><table><thead><tr><th data-i18n="path">Recorrido</th><th data-i18n="jointProbability">Probabilidad conjunta</th><th data-i18n="conditional">Condicionada</th></tr></thead><tbody id="outcomeRows"></tbody></table></div></section></section>
+  <section id="simulationView" hidden><div class="sim-layout"><section class="panel"><span class="eyebrow" data-i18n="monteCarlo">MONTE CARLO</span><h2 data-i18n="runSimulation">Ejecutar simulación</h2><p class="muted" data-i18n="simDescription">Repite el experimento para comparar frecuencias observadas con probabilidades teóricas.</p><label data-i18n="repetitions">Número de repeticiones</label><select id="iterations" class="field"><option>100</option><option selected>1000</option><option>10000</option><option>100000</option></select><button class="primary-btn full-btn" id="runSimulation" data-i18n="run">Ejecutar simulación</button></section><section class="panel"><span class="eyebrow" data-i18n="results">RESULTS</span><h2 data-i18n="simulationResults">Resultados de simulación</h2><div id="simulationResults" class="sim-results muted" data-i18n="runToSee">Ejecuta una simulación para ver los resultados.</div></section></div></section>
+  <footer class="main-footer"><span>Branch · Probability tree studio</span><span data-i18n="localOnly">Tus proyectos permanecen en este navegador.</span></footer>
+ </main>
+</div>
+<div class="modal-backdrop" id="modal" hidden><div class="modal"><div class="modal-head"><h2 id="modalTitle">Exportar</h2><button class="small-btn" id="closeModal">×</button></div><div id="modalBody"></div></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="app.js"></script>
+</body></html>
