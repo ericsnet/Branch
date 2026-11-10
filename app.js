@@ -6,6 +6,147 @@ const translations = {
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
 let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
+let zenKey="";
+let zenRemember=false;
+let pendingAITree=null;
+const ZEN_MODEL="deepseek-v4-flash-free";
+const ZEN_ENDPOINT="https://opencode.ai/zen/v1/chat/completions";
+function loadZenSettings(){
+ try{
+  zenKey=sessionStorage.getItem("branch-zen-key")||localStorage.getItem("branch-zen-key")||"";
+  zenRemember=!!localStorage.getItem("branch-zen-key");
+ }catch(_){zenKey="";zenRemember=false}
+}
+function saveZenSettings(key,remember){
+ zenKey=String(key||"").trim();zenRemember=!!remember;
+ try{
+  sessionStorage.removeItem("branch-zen-key");localStorage.removeItem("branch-zen-key");
+  if(zenKey){if(zenRemember)localStorage.setItem("branch-zen-key",zenKey);else sessionStorage.setItem("branch-zen-key",zenKey)}
+ }catch(_){throw new Error("El navegador no permite guardar la configuración")}
+ updateAIStatus();
+}
+function updateAIStatus(message){
+ const el=$("aiStatus");if(!el)return;
+ if(message){el.textContent=message;return}
+ el.textContent=zenKey
+  ?(lang==="es"?"OpenCode Zen configurado · DeepSeek V4 Flash Free":"OpenCode Zen configured · DeepSeek V4 Flash Free")
+  :(lang==="es"?"Configura tu API Key en ⚙ para activar la IA remota. El motor local sigue funcionando sin conexión.":"Set your API key in ⚙ to enable remote AI. The local engine keeps working offline.");
+}
+function openAISettings(){
+ const body=$("modalBody");
+ $("modalTitle").textContent=lang==="es"?"Configuración de IA":"AI settings";
+ body.innerHTML='<p class="settings-intro">'+(lang==="es"?"Conecta Branch con OpenCode Zen. La clave se guarda únicamente en este navegador; no se escribe en el repositorio.":"Connect Branch to OpenCode Zen. The key is stored only in this browser; it is not written to the repository.")+'</p>'+
+ '<label for="zenApiKey">OpenCode Zen API Key</label><div class="key-input-row"><input id="zenApiKey" class="field" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." value="'+escapeHtml(zenKey)+'"><button type="button" class="secondary-btn" id="toggleZenKey">'+(lang==="es"?"Mostrar":"Show")+'</button></div>'+
+ '<label class="remember-key"><input type="checkbox" id="rememberZenKey" '+(zenRemember?"checked":"")+'> '+(lang==="es"?"Recordar en este dispositivo (menos privado)":"Remember on this device (less private)")+'</label>'+
+ '<div class="settings-model"><strong>Modelo</strong><span>DeepSeek V4 Flash Free</span><small>deepseek-v4-flash-free</small></div>'+
+ '<p class="settings-security">'+(lang==="es"?"La clave se envía desde este navegador directamente a OpenCode Zen por HTTPS. No se envía a un servidor de Branch. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent directly from this browser to OpenCode Zen over HTTPS. It is not sent to a Branch server. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
+ '<div class="settings-actions"><button type="button" class="secondary-btn" id="testZenBtn">'+(lang==="es"?"Probar conexión":"Test connection")+'</button><button type="button" class="danger-btn" id="removeZenKeyBtn">'+(lang==="es"?"Eliminar clave":"Remove key")+'</button><button type="button" class="primary-btn" id="saveZenBtn">'+(lang==="es"?"Guardar":"Save")+'</button></div><div id="zenSettingsStatus" class="ai-status" role="status"></div>';
+ $("modal").hidden=false;
+ $("toggleZenKey").onclick=()=>{const input=$("zenApiKey");input.type=input.type==="password"?"text":"password";$("toggleZenKey").textContent=input.type==="password"?(lang==="es"?"Mostrar":"Show"):(lang==="es"?"Ocultar":"Hide")};
+ $("saveZenBtn").onclick=()=>{try{saveZenSettings($("zenApiKey").value,$("rememberZenKey").checked);$("modal").hidden=true;toast(lang==="es"?"Configuración guardada":"Settings saved")}catch(e){$("zenSettingsStatus").textContent=e.message}};
+ $("removeZenKeyBtn").onclick=()=>{saveZenSettings("",false);$("zenApiKey").value="";$("rememberZenKey").checked=false;$("zenSettingsStatus").textContent=lang==="es"?"Clave eliminada de este navegador.":"Key removed from this browser."};
+ $("testZenBtn").onclick=async()=>{const key=$("zenApiKey").value.trim();const status=$("zenSettingsStatus");if(!key){status.textContent=lang==="es"?"Introduce primero la API Key.":"Enter the API key first.";return}status.textContent=lang==="es"?"Probando conexión…":"Testing connection…";$("testZenBtn").disabled=true;try{await callZen([{role:"user",content:"Reply with exactly: BRANCH_OK"}],key,80);status.textContent=lang==="es"?"Conexión correcta.":"Connection successful."}catch(e){status.textContent=describeAIError(e)}finally{$("testZenBtn").disabled=false}};
+}
+function describeAIError(error){
+ const raw=String(error&&error.message||error||"Error desconocido");
+ if(/Failed to fetch|NetworkError|CORS/i.test(raw))return lang==="es"?"No se pudo conectar desde el navegador. Puede ser un bloqueo CORS de OpenCode Zen o un problema de red.":"Browser connection failed. This may be an OpenCode Zen CORS restriction or a network issue.";
+ if(/401|unauthorized|invalid.*key/i.test(raw))return lang==="es"?"OpenCode Zen ha rechazado la API Key (401). Comprueba que sea correcta.":"OpenCode Zen rejected the API key (401). Check that it is correct.";
+ if(/403|forbidden|FreeTier|free tier/i.test(raw))return lang==="es"?"OpenCode Zen ha rechazado la solicitud (403). El acceso gratuito puede estar limitado a OpenCode y no permitir aplicaciones externas.":"OpenCode Zen rejected the request (403). Free access may be restricted to OpenCode and unavailable to external apps.";
+ if(/429|rate limit|limit exceeded/i.test(raw))return lang==="es"?"Se ha alcanzado el límite de uso del modelo. Inténtalo más tarde.":"The model usage limit has been reached. Try again later.";
+ return raw.slice(0,500);
+}
+async function callZen(messages,key=zenKey,maxTokens=2500){
+ if(!key)throw new Error(lang==="es"?"Falta la API Key de OpenCode Zen.":"OpenCode Zen API key is missing.");
+ const response=await fetch(ZEN_ENDPOINT,{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:ZEN_MODEL,messages,temperature:0.2,max_tokens:maxTokens})});
+ const raw=await response.text();
+ let data;try{data=JSON.parse(raw)}catch(_){throw new Error("Respuesta no válida de OpenCode Zen (HTTP "+response.status+").")}
+ if(!response.ok)throw new Error("HTTP "+response.status+": "+(data.error?.message||data.message||raw.slice(0,300)));
+ const content=data.choices?.[0]?.message?.content;
+ if(typeof content!=="string"||!content.trim())throw new Error("El modelo devolvió una respuesta vacía.");
+ return content.trim();
+}
+function parseAIJson(content){
+ let text=String(content).trim().replace(/^\`\`\`(?:json)?\s*/i,"").replace(/\`\`\`$/,"").trim();
+ const first=text.indexOf("{"),last=text.lastIndexOf("}");
+ if(first<0||last<=first)throw new Error(lang==="es"?"La IA no devolvió un JSON válido.":"AI did not return valid JSON.");
+ return JSON.parse(text.slice(first,last+1));
+}
+function treeToAIData(node){
+ return {label:node.label,probability:node.id==="root"?null:probability(node),method:node.method||"manual",favourable:node.favourable,total:node.total,notes:node.notes||"",children:node.children.map(treeToAIData)};
+}
+function validateAndBuildAITree(raw){
+ if(!raw||typeof raw!=="object"||!raw.tree||typeof raw.tree!=="object")throw new Error(lang==="es"?"La respuesta no contiene un árbol.":"Response does not contain a tree.");
+ let total=0;
+ function build(source,depth){
+  if(depth>12)throw new Error(lang==="es"?"El árbol supera los 12 niveles permitidos.":"Tree exceeds the 12-level limit.");
+  if(++total>180)throw new Error(lang==="es"?"El árbol supera los 180 nodos permitidos.":"Tree exceeds the 180-node limit.");
+  if(!source||typeof source!=="object")throw new Error("Invalid node.");
+  const label=String(source.label||"").trim().slice(0,100);
+  if(!label)throw new Error(lang==="es"?"Hay un nodo sin nombre.":"A node has no label.");
+  const children=Array.isArray(source.children)?source.children:[];
+  if(children.length>20)throw new Error(lang==="es"?"Un nodo tiene más de 20 ramas.":"A node has more than 20 branches.");
+  const p=source.probability===null||source.probability===undefined?null:Number(source.probability);
+  if(p!==null&&(!Number.isFinite(p)||p<0||p>100))throw new Error(lang==="es"?"Hay una probabilidad fuera del intervalo 0–100 %.":"A probability is outside the 0–100% range.");
+  const node=makeNode(id(),label,p);
+  node.notes=String(source.notes||"").slice(0,500);
+  node.children=children.map(child=>build(child,depth+1));
+  return node;
+ }
+ const root=build(raw.tree,0);root.id="root";root.p=null;root.method="manual";
+ return root;
+}
+function describeTree(node,depth=0,lines=[]){
+ lines.push("  ".repeat(depth)+"• "+node.label+(node.id==="root"?"":": "+(probability(node)===null?"sin definir":probability(node)+"%")));
+ node.children.forEach(child=>describeTree(child,depth+1,lines));return lines;
+}
+function showAITreePreview(nextTree,summary){
+ pendingAITree=nextTree;
+ const count=countNodes(nextTree),preview=describeTree(nextTree).slice(0,45).join("\n");
+ $("modalTitle").textContent=lang==="es"?"Vista previa del diagrama":"Diagram preview";
+ $("modalBody").innerHTML='<p class="settings-intro">'+escapeHtml(summary|| (lang==="es"?"La IA ha preparado este árbol. Revisa la estructura antes de aplicarla.":"AI prepared this tree. Review it before applying."))+'</p><div class="ai-tree-preview">'+escapeHtml(preview)+(count>45?"\n…": "")+'</div><p class="field-help">'+count+" "+(lang==="es"?"nodos en total":"nodes total")+'</p>';
+ $("modal").hidden=false;
+ const actions=document.createElement("div");actions.className="settings-actions";
+ const cancel=document.createElement("button");cancel.className="secondary-btn";cancel.textContent=lang==="es"?"Cancelar":"Cancel";cancel.onclick=()=>{$("modal").hidden=true;pendingAITree=null};
+ const apply=document.createElement("button");apply.className="primary-btn";apply.textContent=lang==="es"?"Aplicar diagrama":"Apply diagram";apply.onclick=()=>{if(!pendingAITree)return;snapshot();tree=pendingAITree;pendingAITree=null;selected="root";render();save();$("modal").hidden=true;toast(lang==="es"?"Diagrama creado por IA":"AI diagram applied")};
+ actions.append(cancel,apply);$("modalBody").appendChild(actions);
+}
+function renderAIAnalysis(data){
+ const result=$("aiResult");result.hidden=false;
+ const summary=String(data.summary||"").slice(0,1200);
+ const issues=Array.isArray(data.issues)?data.issues.slice(0,20):[];
+ result.innerHTML='<div class="ai-result-summary">'+escapeHtml(summary|| (lang==="es"?"Análisis completado.":"Analysis complete."))+'</div>'+
+ (issues.length?issues.map(issue=>'<article class="ai-issue severity-'+(issue.severity==="error"?"error":issue.severity==="warning"?"warning":"info")+'"><strong>'+escapeHtml(String(issue.title||issue.severity||"Hallazgo"))+'</strong><p>'+escapeHtml(String(issue.message||""))+'</p>'+(issue.path?'<small>'+escapeHtml(String(issue.path))+'</small>':"")+'</article>').join(""):'<p class="field-help">'+(lang==="es"?"No se han devuelto hallazgos concretos.":"No specific issues were returned.")+'</p>');
+}
+async function runRemoteAI(mode){
+ if(!zenKey){toast(lang==="es"?"Configura primero la API Key en ⚙":"Set your API key in ⚙ first");openAISettings();return}
+ const prompt=$("aiPrompt").value.trim();
+ if(mode==="create"&&!prompt){$("aiPrompt").focus();toast(lang==="es"?"Describe el diagrama que quieres crear.":"Describe the diagram you want to create.");return}
+ const buttons=["aiCreateBtn","aiAnalyzeBtn","aiRepairBtn"].map($);
+ buttons.forEach(button=>button.disabled=true);
+ $("aiResult").hidden=true;
+ $("aiStatus").textContent=lang==="es"?"Consultando DeepSeek V4 Flash Free…":"Asking DeepSeek V4 Flash Free…";
+ const current={projectName,tree:treeToAIData(tree),validation:$("validationList").innerText};
+ const system="You are the probability-tree assistant inside Branch. Return ONLY valid JSON, no markdown fences. Never invent observations or claim a probability is empirically measured unless the user supplied data. A probability must be 0..100 or null. Each node has label, probability (null for root), notes, and children. Sibling probabilities should sum to 100 only when the information supports it; if unknown, use null and explain the uncertainty in issues. Keep the tree compact and mathematically coherent. Output schema: {\"summary\":string,\"tree\":{\"label\":string,\"probability\":null,\"notes\":string,\"children\":[...]},\"issues\":[{\"severity\":\"error|warning|info\",\"title\":string,\"message\":string,\"path\":string}]}. For analysis-only tasks you may omit tree.";
+ let instruction="";
+ if(mode==="create")instruction="Create a probability tree from this request. Return the complete tree in the required schema. User request: "+prompt;
+ if(mode==="analyze")instruction="Audit this existing probability tree. Check mathematical sums, missing or invalid probabilities, conditional structure, contradictory labels, unsupported assumptions, and whether the model confuses conditional and joint probabilities. Do not modify the tree. Current project: "+JSON.stringify(current);
+ if(mode==="repair")instruction="Find and repair objectively demonstrable problems in this probability tree. Preserve valid branches and user-provided data. Do not invent unknown probabilities: use null and explain them in issues. Return a complete corrected tree. User instructions: "+(prompt||"Repair only clear errors.")+" Current project: "+JSON.stringify(current);
+ try{
+  const content=await callZen([{role:"system",content:system},{role:"user",content:instruction}],zenKey,4000);
+  const data=parseAIJson(content);
+  if(mode==="analyze"){renderAIAnalysis(data);$("aiStatus").textContent=lang==="es"?"Análisis remoto completado.":"Remote analysis complete."}
+  else{
+   const next=validateAndBuildAITree(data);
+   if(mode==="repair"&&countNodes(next)<1)throw new Error("Empty tree.");
+   if(Array.isArray(data.issues)&&data.issues.length)renderAIAnalysis(data);
+   showAITreePreview(next,data.summary);
+   $("aiStatus").textContent=lang==="es"?"La IA ha preparado una propuesta. Revisa la vista previa antes de aplicarla.":"AI prepared a proposal. Review the preview before applying it.";
+  }
+ }catch(error){
+  $("aiStatus").textContent=describeAIError(error);
+ }finally{buttons.forEach(button=>button.disabled=false)}
+}
+
 function applyTheme(){
  document.documentElement.dataset.theme=theme;
  const dark=theme==="dark";
@@ -478,6 +619,11 @@ function showShortcuts(){
  $("modal").hidden=false;
 }
 $("shortcutsBtn").onclick=showShortcuts;
+$("aiSettingsBtn").onclick=openAISettings;
+$("aiCreateBtn").onclick=()=>runRemoteAI("create");
+$("aiAnalyzeBtn").onclick=()=>runRemoteAI("analyze");
+$("aiRepairBtn").onclick=()=>runRemoteAI("repair");
+
 document.addEventListener("keydown",e=>{
  const key=e.key.toLowerCase(),mod=e.ctrlKey||e.metaKey;
  const target=e.target;
@@ -514,5 +660,5 @@ $("redoBtn").onclick=()=>{if(!redoStack.length)return;undoStack.push(JSON.string
 $("statsLevel").onchange=renderStats;
 try{let saved=localStorage.getItem("branch-project");if(saved){let s=JSON.parse(saved);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual"}}catch(_){}
 if(location.hash.startsWith("#data=")){try{let d=decodeURIComponent(escape(atob(location.hash.slice(6))));let s=JSON.parse(d);tree=s.tree;projectName=s.projectName||projectName;orientation=s.orientation||orientation;projectMode=s.projectMode||"manual";history.replaceState(null,"",location.pathname)}catch(_){}}
-window.addEventListener("resize",drawTree);const updatePatternToggle=setupPatternPanel();applyTheme();render();renderProjectMode();localize();if(updatePatternToggle)updatePatternToggle();
+window.addEventListener("resize",drawTree);loadZenSettings();const updatePatternToggle=setupPatternPanel();applyTheme();render();renderProjectMode();localize();updateAIStatus();if(updatePatternToggle)updatePatternToggle();
 })();
