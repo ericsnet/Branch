@@ -229,7 +229,7 @@ document.addEventListener("keydown",e=>{
   if(e.shiftKey)$("redoBtn").click();else $("undoBtn").click();
   return;
  }
- if(e.ctrlKey&&key==="y"){e.preventDefault();$("redoBtn").click();return}
+ if(mod&&key==="y"){e.preventDefault();$("redoBtn").click();return}
  if(mod&&e.key==="Enter"){e.preventDefault();addBranch(selected);return}
  if((e.key==="Delete"||e.key==="Backspace")&&selected!=="root"){
   e.preventDefault();$("deleteBtn").click();
