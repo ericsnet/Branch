@@ -9,7 +9,7 @@ let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
 let zenKey="";
 let zenRemember=false;
 let pendingAITree=null;
-const ZEN_MODEL="deepseek-v4.1-flash-free";
+const ZEN_MODEL="muse-spark-1.3-contributor";
 const ZEN_ENDPOINT="https://branch-ai-proxy.eric-silvestre.workers.dev/api/ai";
 function loadZenSettings(){
  try{
@@ -29,17 +29,17 @@ function updateAIStatus(message){
  const el=$("aiStatus");if(!el)return;
  if(message){el.textContent=message;return}
  el.textContent=zenKey
-  ?(lang==="es"?"OpenCode Zen configurado · DeepSeek V4.1 Flash Free":"OpenCode Zen configured · DeepSeek V4.1 Flash Free")
+  ?(lang==="es"?"OpenCode Go configurado · Muse Spark 1.3 Contributor":"OpenCode Go configured · Muse Spark 1.3 Contributor")
   :(lang==="es"?"Configura tu API Key en ⚙ para activar la IA remota. El motor local sigue funcionando sin conexión.":"Set your API key in ⚙ to enable remote AI. The local engine keeps working offline.");
 }
 function openAISettings(){
  const body=$("modalBody");
  $("modalTitle").textContent=lang==="es"?"Configuración de IA":"AI settings";
  body.innerHTML='<p class="settings-intro">'+(lang==="es"?"Conecta Branch mediante tu Worker de Cloudflare. La clave permanece en este navegador y solo se envía al Worker al realizar una petición de IA.":"Connect Branch through your Cloudflare Worker. The key stays in this browser and is sent to the Worker only when making an AI request.")+'</p>'+
- '<label for="zenApiKey">OpenCode Zen API Key</label><div class="key-input-row"><input id="zenApiKey" class="field" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." value="'+escapeHtml(zenKey)+'"><button type="button" class="secondary-btn" id="toggleZenKey">'+(lang==="es"?"Mostrar":"Show")+'</button></div>'+
+ '<label for="zenApiKey">OpenCode Go API Key</label><div class="key-input-row"><input id="zenApiKey" class="field" type="password" autocomplete="off" spellcheck="false" placeholder="sk-..." value="'+escapeHtml(zenKey)+'"><button type="button" class="secondary-btn" id="toggleZenKey">'+(lang==="es"?"Mostrar":"Show")+'</button></div>'+
  '<label class="remember-key"><input type="checkbox" id="rememberZenKey" '+(zenRemember?"checked":"")+'> '+(lang==="es"?"Recordar en este dispositivo (menos privado)":"Remember on this device (less private)")+'</label>'+
- '<div class="settings-model"><strong>Modelo</strong><span>DeepSeek V4.1 Flash Free</span><small>deepseek-v4.1-flash-free</small></div>'+
- '<p class="settings-security">'+(lang==="es"?"La clave se envía por HTTPS a tu Worker de Cloudflare, que la reenvía a OpenCode Zen sin guardarla. El Worker puede verla durante la petición. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent over HTTPS to your Cloudflare Worker, which forwards it to OpenCode Zen without storing it. The Worker can see it while processing the request. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
+ '<div class="settings-model"><strong>Modelo</strong><span>Muse Spark 1.3 Contributor</span><small>muse-spark-1.3-contributor</small></div>'+
+ '<p class="settings-security">'+(lang==="es"?"La clave se envía por HTTPS a tu Worker de Cloudflare, que la reenvía a OpenCode Go sin guardarla. El Worker puede verla durante la petición. Cualquier persona o extensión con acceso a esta sesión del navegador podría llegar a verla.":"The key is sent over HTTPS to your Cloudflare Worker, which forwards it to OpenCode Go without storing it. The Worker can see it while processing the request. Anyone or any extension with access to this browser session could potentially access it.")+'</p>'+
  '<div class="settings-actions"><button type="button" class="secondary-btn" id="testZenBtn">'+(lang==="es"?"Probar conexión":"Test connection")+'</button><button type="button" class="danger-btn" id="removeZenKeyBtn">'+(lang==="es"?"Eliminar clave":"Remove key")+'</button><button type="button" class="primary-btn" id="saveZenBtn">'+(lang==="es"?"Guardar":"Save")+'</button></div><div id="zenSettingsStatus" class="ai-status" role="status"></div>';
  $("modal").hidden=false;
  $("toggleZenKey").onclick=()=>{const input=$("zenApiKey");input.type=input.type==="password"?"text":"password";$("toggleZenKey").textContent=input.type==="password"?(lang==="es"?"Mostrar":"Show"):(lang==="es"?"Ocultar":"Hide")};
@@ -49,17 +49,17 @@ function openAISettings(){
 }
 function describeAIError(error){
  const raw=String(error&&error.message||error||"Error desconocido");
- if(/Failed to fetch|NetworkError|CORS/i.test(raw))return lang==="es"?"No se pudo conectar desde el navegador. Puede ser un bloqueo CORS de OpenCode Zen o un problema de red.":"Browser connection failed. This may be an OpenCode Zen CORS restriction or a network issue.";
- if(/401|unauthorized|invalid.*key/i.test(raw))return lang==="es"?"OpenCode Zen ha rechazado la API Key (401). Comprueba que sea correcta.":"OpenCode Zen rejected the API key (401). Check that it is correct.";
- if(/403|forbidden|FreeTier|free tier/i.test(raw))return lang==="es"?"OpenCode Zen ha rechazado la solicitud (403). El acceso gratuito puede estar limitado a OpenCode y no permitir aplicaciones externas.":"OpenCode Zen rejected the request (403). Free access may be restricted to OpenCode and unavailable to external apps.";
+ if(/Failed to fetch|NetworkError|CORS/i.test(raw))return lang==="es"?"No se pudo conectar desde el navegador. Puede ser un bloqueo CORS de OpenCode Go o un problema de red.":"Browser connection failed. This may be an OpenCode Go CORS restriction or a network issue.";
+ if(/401|unauthorized|invalid.*key/i.test(raw))return lang==="es"?"OpenCode Go ha rechazado la API Key (401). Comprueba que sea correcta.":"OpenCode Go rejected the API key (401). Check that it is correct.";
+ if(/403|forbidden|FreeTier|free tier/i.test(raw))return lang==="es"?"OpenCode Go ha rechazado la solicitud (403). El acceso gratuito puede estar limitado a OpenCode y no permitir aplicaciones externas.":"OpenCode Go rejected the request (403). Free access may be restricted to OpenCode and unavailable to external apps.";
  if(/429|rate limit|limit exceeded/i.test(raw))return lang==="es"?"Se ha alcanzado el límite de uso del modelo. Inténtalo más tarde.":"The model usage limit has been reached. Try again later.";
  return raw.slice(0,500);
 }
 async function callZen(messages,key=zenKey,maxTokens=2500){
- if(!key)throw new Error(lang==="es"?"Falta la API Key de OpenCode Zen.":"OpenCode Zen API key is missing.");
+ if(!key)throw new Error(lang==="es"?"Falta la API Key de OpenCode Go.":"OpenCode Go API key is missing.");
  const response=await fetch(ZEN_ENDPOINT,{method:"POST",headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({model:ZEN_MODEL,messages,temperature:0.2,max_tokens:maxTokens})});
  const raw=await response.text();
- let data;try{data=JSON.parse(raw)}catch(_){throw new Error("Respuesta no válida de OpenCode Zen (HTTP "+response.status+").")}
+ let data;try{data=JSON.parse(raw)}catch(_){throw new Error("Respuesta no válida de OpenCode Go (HTTP "+response.status+").")}
  if(!response.ok)throw new Error("HTTP "+response.status+": "+(data.error?.message||data.message||raw.slice(0,300)));
  const content=data.choices?.[0]?.message?.content;
  if(typeof content!=="string"||!content.trim())throw new Error("El modelo devolvió una respuesta vacía.");
@@ -124,7 +124,7 @@ async function runRemoteAI(mode){
  const buttons=["aiCreateBtn","aiAnalyzeBtn","aiRepairBtn"].map($);
  buttons.forEach(button=>button.disabled=true);
  $("aiResult").hidden=true;
- $("aiStatus").textContent=lang==="es"?"Consultando DeepSeek V4.1 Flash Free…":"Asking DeepSeek V4.1 Flash Free…";
+ $("aiStatus").textContent=lang==="es"?"Consultando Muse Spark 1.3 Contributor…":"Asking Muse Spark 1.3 Contributor…";
  const current={projectName,tree:treeToAIData(tree),validation:$("validationList").innerText};
  const system="You are the probability-tree assistant inside Branch. Return ONLY valid JSON, no markdown fences. Never invent observations or claim a probability is empirically measured unless the user supplied data. A probability must be 0..100 or null. Each node has label, probability (null for root), notes, and children. Sibling probabilities should sum to 100 only when the information supports it; if unknown, use null and explain the uncertainty in issues. Keep the tree compact and mathematically coherent. Output schema: {\"summary\":string,\"tree\":{\"label\":string,\"probability\":null,\"notes\":string,\"children\":[...]},\"issues\":[{\"severity\":\"error|warning|info\",\"title\":string,\"message\":string,\"path\":string}]}. For analysis-only tasks you may omit tree.";
  let instruction="";
