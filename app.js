@@ -1,8 +1,8 @@
 (() => {
 const $ = id => document.getElementById(id);
 const translations = {
- es:{project:"Proyecto",horizontal:"Horizontal",vertical:"Vertical",save:"Guardar",export:"Exportar",workspace:"ESPACIO DE TRABAJO",editor:"Editor",statistics:"Estadísticas",simulation:"Simulación",tree:"ÁRBOL",localSaved:"Guardado localmente",addBranch:"Añadir rama",templates:"Plantillas",import:"Importar proyecto",quickTip:"Consejo rápido",tipText:"Las probabilidades de las ramas de un mismo nodo deberían sumar el 100 %.",probabilityWorkspace:"ESPACIO DE PROBABILIDAD",treeEditor:"Editor de árbol",pageSubtitle:"Construye escenarios, asigna probabilidades y entiende cada resultado.",share:"Compartir",liveCalculation:"Cálculo en tiempo real",fitView:"Ajustar vista",clear:"Limpiar",canvasHint:"Selecciona un nodo para editarlo · Pulsa + para añadir ramas",selection:"SELECCIÓN",nodeProperties:"Propiedades del nodo",selectNode:"Selecciona un nodo o una rama del árbol.",label:"Nombre",probability:"Probabilidad",inputMethod:"Método",favourable:"Favorables",total:"Total de casos",notes:"Notas",color:"Color",duplicate:"Duplicar",delete:"Eliminar",qualityCheck:"CONTROL DE CALIDAD",validation:"Validación",outcomes:"RESULTADOS",finalOutcomes:"Resultados finales",path:"Recorrido",jointProbability:"Probabilidad conjunta",conditional:"Condicionada",monteCarlo:"MONTE CARLO",runSimulation:"Ejecutar simulación",simDescription:"Repite el experimento para comparar frecuencias observadas con probabilidades teóricas.",repetitions:"Número de repeticiones",run:"Ejecutar simulación",results:"RESULTADOS",simulationResults:"Resultados de simulación",runToSee:"Ejecuta una simulación para ver los resultados.",localOnly:"Tus proyectos permanecen en este navegador.",saved:"Proyecto guardado",added:"Rama añadida",invalidSum:"Las probabilidades de las ramas suman",missing:"Hay probabilidades sin definir.",over:"La suma supera el 100 %.",under:"La suma es inferior al 100 %.",allGood:"No se detectan incoherencias en los datos actuales.",exportTitle:"Exportar proyecto",exportJson:"Proyecto JSON",exportSvg:"Diagrama SVG",exportPng:"Imagen PNG",exportPdf:"PDF / Imprimir",shareTitle:"Compartir árbol",shareFile:"Descargar archivo para compartir",shareLink:"Copiar enlace con los datos",templatesTitle:"Plantillas",coin:"Dos lanzamientos de moneda",weather:"Previsión meteorológica",medical:"Prueba hipotética",empty:"Árbol vacío",imported:"Proyecto importado",linkCopied:"Enlace copiado",selectFirst:"Selecciona primero un nodo.",deleteRoot:"No se puede eliminar la raíz.",simulated:"Simulación completada",outcomesCount:"resultados",probOf:"Probabilidad",observed:"Observada",theoretical:"Teórica",branch:"Rama",root:"Raíz",nodes:"nodos",branches:"ramas",noOutcomes:"Añade ramas para generar resultados.",rootLabel:"Experimento",guideTitle:"Empieza en 3 pasos",guideIntro:"No necesitas configurar nada antes de empezar.",guideStep1:"Selecciona un nodo para editar su nombre.",guideStep2:"Pulsa + o «Añadir rama» para crear opciones.",guideStep3:"Asigna porcentajes; las ramas del mismo nodo deben sumar 100 %.",addBranchAction:"＋ Añadir rama",nodeHelp:"Haz clic en un nodo del diagrama para editarlo.",probabilityHelp:"Las opciones que salen del mismo nodo deben sumar 100 %.",yes:"Sí",no:"No",fair:"Cara",tails:"Cruz",autoModeLabel:"Automatización de ramas de este proyecto",autoCopy:"Copiar opciones y porcentajes",autoEqual:"Copiar opciones y repartir porcentajes por igual",autoNames:"Copiar solo los nombres",autoManual:"Manual, sin autocompletar",autoModeHelp:"Al crear opciones bajo una rama, Branch las replica en sus ramas hermanas que aún estén vacías. Después puedes editar cada una por separado."},
- en:{project:"Project",horizontal:"Horizontal",vertical:"Vertical",save:"Save",export:"Export",workspace:"WORKSPACE",editor:"Editor",statistics:"Statistics",simulation:"Simulation",tree:"TREE",localSaved:"Saved locally",addBranch:"Add branch",templates:"Templates",import:"Import project",quickTip:"Quick tip",tipText:"Branch probabilities from the same node should add up to 100%.",probabilityWorkspace:"PROBABILITY WORKSPACE",treeEditor:"Tree editor",pageSubtitle:"Build scenarios, assign probabilities and understand every outcome.",share:"Share",liveCalculation:"Live calculations",fitView:"Fit view",clear:"Clear",canvasHint:"Select a node to edit it · Press + to add branches",selection:"SELECTION",nodeProperties:"Node properties",selectNode:"Select a node or branch in the tree.",label:"Label",probability:"Probability",inputMethod:"Method",favourable:"Favourable",total:"Total cases",notes:"Notes",color:"Color",duplicate:"Duplicate",delete:"Delete",qualityCheck:"QUALITY CHECK",validation:"Validation",outcomes:"OUTCOMES",finalOutcomes:"Final outcomes",path:"Path",jointProbability:"Joint probability",conditional:"Conditional",monteCarlo:"MONTE CARLO",runSimulation:"Run simulation",simDescription:"Repeat the experiment to compare observed frequencies with theoretical probabilities.",repetitions:"Number of repetitions",run:"Run simulation",results:"RESULTS",simulationResults:"Simulation results",runToSee:"Run a simulation to see results.",localOnly:"Your projects stay in this browser.",saved:"Project saved",added:"Branch added",invalidSum:"Branch probabilities add up to",missing:"Some probabilities are undefined.",over:"The sum exceeds 100%.",under:"The sum is below 100%.",allGood:"No inconsistencies detected in the current data.",exportTitle:"Export project",exportJson:"JSON project",exportSvg:"SVG diagram",exportPng:"PNG image",exportPdf:"PDF / Print",shareTitle:"Share tree",shareFile:"Download shareable file",shareLink:"Copy data link",templatesTitle:"Templates",coin:"Two coin tosses",weather:"Weather forecast",medical:"Hypothetical test",empty:"Empty tree",imported:"Project imported",linkCopied:"Link copied",selectFirst:"Select a node first.",deleteRoot:"The root cannot be deleted.",simulated:"Simulation complete",outcomesCount:"outcomes",probOf:"Probability",observed:"Observed",theoretical:"Theoretical",branch:"Branch",root:"Root",nodes:"nodes",branches:"branches",noOutcomes:"Add branches to generate outcomes.",rootLabel:"Experiment",guideTitle:"Get started in 3 steps",guideIntro:"You can start without configuring anything.",guideStep1:"Select a node to edit its name.",guideStep2:"Press + or “Add branch” to create options.",guideStep3:"Set percentages; branches from the same node must add up to 100%.",addBranchAction:"＋ Add branch",nodeHelp:"Click a node in the diagram to edit it.",probabilityHelp:"Options branching from the same node must add up to 100%.",yes:"Yes",no:"No",fair:"Heads",tails:"Tails",autoModeLabel:"Branch automation for this project",autoCopy:"Copy options and probabilities",autoEqual:"Copy options and split probabilities equally",autoNames:"Copy names only",autoManual:"Manual, no auto-fill",autoModeHelp:"When you create options under a branch, Branch copies them to its sibling branches that are still empty. You can then edit each one independently."}
+ es:{project:"Proyecto",horizontal:"Horizontal",vertical:"Vertical",save:"Guardar",export:"Exportar",workspace:"ESPACIO DE TRABAJO",editor:"Editor",statistics:"Estadísticas",simulation:"Simulación",tree:"ÁRBOL",localSaved:"Guardado localmente",addBranch:"Añadir rama",templates:"Plantillas",import:"Importar proyecto",quickTip:"Consejo rápido",tipText:"Las probabilidades de las ramas de un mismo nodo deberían sumar el 100 %.",probabilityWorkspace:"ESPACIO DE PROBABILIDAD",treeEditor:"Editor de árbol",pageSubtitle:"Construye escenarios, asigna probabilidades y entiende cada resultado.",share:"Compartir",liveCalculation:"Cálculo en tiempo real",fitView:"Ajustar vista",clear:"Limpiar",canvasHint:"Selecciona un nodo para editarlo · Pulsa + para añadir ramas",selection:"SELECCIÓN",nodeProperties:"Propiedades del nodo",selectNode:"Selecciona un nodo o una rama del árbol.",label:"Nombre",probability:"Probabilidad",inputMethod:"Método",favourable:"Favorables",total:"Total de casos",notes:"Notas",color:"Color",duplicate:"Duplicar",delete:"Eliminar",qualityCheck:"CONTROL DE CALIDAD",validation:"Validación",outcomes:"RESULTADOS",finalOutcomes:"Resultados finales",path:"Recorrido",jointProbability:"Probabilidad conjunta",conditional:"Condicionada",monteCarlo:"MONTE CARLO",runSimulation:"Ejecutar simulación",simDescription:"Repite el experimento para comparar frecuencias observadas con probabilidades teóricas.",repetitions:"Número de repeticiones",run:"Ejecutar simulación",results:"RESULTADOS",simulationResults:"Resultados de simulación",runToSee:"Ejecuta una simulación para ver los resultados.",localOnly:"Tus proyectos permanecen en este navegador.",saved:"Proyecto guardado",added:"Rama añadida",invalidSum:"Las probabilidades de las ramas suman",missing:"Hay probabilidades sin definir.",over:"La suma supera el 100 %.",under:"La suma es inferior al 100 %.",allGood:"No se detectan incoherencias en los datos actuales.",exportTitle:"Exportar proyecto",exportJson:"Proyecto JSON",exportSvg:"Diagrama SVG",exportPng:"Imagen PNG",exportPdf:"PDF / Imprimir",shareTitle:"Compartir árbol",shareFile:"Descargar archivo para compartir",shareLink:"Copiar enlace con los datos",templatesTitle:"Plantillas",coin:"Dos lanzamientos de moneda",weather:"Previsión meteorológica",medical:"Prueba hipotética",empty:"Árbol vacío",imported:"Proyecto importado",linkCopied:"Enlace copiado",selectFirst:"Selecciona primero un nodo.",deleteRoot:"No se puede eliminar la raíz.",simulated:"Simulación completada",outcomesCount:"resultados",probOf:"Probabilidad",observed:"Observada",theoretical:"Teórica",branch:"Rama",root:"Raíz",nodes:"nodos",branches:"ramas",noOutcomes:"Añade ramas para generar resultados.",rootLabel:"Experimento",guideTitle:"Empieza en 3 pasos",guideIntro:"No necesitas configurar nada antes de empezar.",guideStep1:"Selecciona un nodo para editar su nombre.",guideStep2:"Pulsa + o «Añadir rama» para crear opciones.",guideStep3:"Asigna porcentajes; las ramas del mismo nodo deben sumar 100 %.",addBranchAction:"＋ Añadir rama",nodeHelp:"Haz clic en un nodo del diagrama para editarlo.",probabilityHelp:"Las opciones que salen del mismo nodo deben sumar 100 %.",yes:"Sí",no:"No",fair:"Cara",tails:"Cruz",autoModeLabel:"Automatización de ramas de este proyecto",autoCopy:"Copiar opciones y porcentajes",autoEqual:"Copiar opciones y repartir porcentajes por igual",autoNames:"Copiar solo los nombres",autoManual:"Manual, sin autocompletar",autoModeHelp:"Al crear opciones bajo una rama, Branch replica los mismos nombres y posiciones en todas las ramas hermanas del mismo nivel. Puedes editar las copias por separado."},
+ en:{project:"Project",horizontal:"Horizontal",vertical:"Vertical",save:"Save",export:"Export",workspace:"WORKSPACE",editor:"Editor",statistics:"Statistics",simulation:"Simulation",tree:"TREE",localSaved:"Saved locally",addBranch:"Add branch",templates:"Templates",import:"Import project",quickTip:"Quick tip",tipText:"Branch probabilities from the same node should add up to 100%.",probabilityWorkspace:"PROBABILITY WORKSPACE",treeEditor:"Tree editor",pageSubtitle:"Build scenarios, assign probabilities and understand every outcome.",share:"Share",liveCalculation:"Live calculations",fitView:"Fit view",clear:"Clear",canvasHint:"Select a node to edit it · Press + to add branches",selection:"SELECTION",nodeProperties:"Node properties",selectNode:"Select a node or branch in the tree.",label:"Label",probability:"Probability",inputMethod:"Method",favourable:"Favourable",total:"Total cases",notes:"Notes",color:"Color",duplicate:"Duplicate",delete:"Delete",qualityCheck:"QUALITY CHECK",validation:"Validation",outcomes:"OUTCOMES",finalOutcomes:"Final outcomes",path:"Path",jointProbability:"Joint probability",conditional:"Conditional",monteCarlo:"MONTE CARLO",runSimulation:"Run simulation",simDescription:"Repeat the experiment to compare observed frequencies with theoretical probabilities.",repetitions:"Number of repetitions",run:"Run simulation",results:"RESULTS",simulationResults:"Simulation results",runToSee:"Run a simulation to see results.",localOnly:"Your projects stay in this browser.",saved:"Project saved",added:"Branch added",invalidSum:"Branch probabilities add up to",missing:"Some probabilities are undefined.",over:"The sum exceeds 100%.",under:"The sum is below 100%.",allGood:"No inconsistencies detected in the current data.",exportTitle:"Export project",exportJson:"JSON project",exportSvg:"SVG diagram",exportPng:"PNG image",exportPdf:"PDF / Print",shareTitle:"Share tree",shareFile:"Download shareable file",shareLink:"Copy data link",templatesTitle:"Templates",coin:"Two coin tosses",weather:"Weather forecast",medical:"Hypothetical test",empty:"Empty tree",imported:"Project imported",linkCopied:"Link copied",selectFirst:"Select a node first.",deleteRoot:"The root cannot be deleted.",simulated:"Simulation complete",outcomesCount:"outcomes",probOf:"Probability",observed:"Observed",theoretical:"Theoretical",branch:"Branch",root:"Root",nodes:"nodes",branches:"branches",noOutcomes:"Add branches to generate outcomes.",rootLabel:"Experiment",guideTitle:"Get started in 3 steps",guideIntro:"You can start without configuring anything.",guideStep1:"Select a node to edit its name.",guideStep2:"Press + or “Add branch” to create options.",guideStep3:"Set percentages; branches from the same node must add up to 100%.",addBranchAction:"＋ Add branch",nodeHelp:"Click a node in the diagram to edit it.",probabilityHelp:"Options branching from the same node must add up to 100%.",yes:"Yes",no:"No",fair:"Heads",tails:"Tails",autoModeLabel:"Branch automation for this project",autoCopy:"Copy options and probabilities",autoEqual:"Copy options and split probabilities equally",autoNames:"Copy names only",autoManual:"Manual, no auto-fill",autoModeHelp:"When you create options under a branch, Branch mirrors the same names and positions across every sibling branch at that level. You can edit each copy independently."}
 };
 let lang="es",orientation="horizontal",selected="root",view="editor",lastSimulation=null,undoStack=[],redoStack=[];
 let theme=localStorage.getItem("branch-theme")==="dark"?"dark":"light";
@@ -51,51 +51,67 @@ function renderValidation(){let warnings=[];walk(tree,n=>{if(n.children.length){
 function renderStats(){let paths=allPaths();let valid=paths.filter(p=>p.prob!==null);let total=valid.reduce((s,p)=>s+p.prob,0);$("statsCards").innerHTML=[["Σ P",total.toFixed(2)+"%"],[t("outcomesCount"),paths.length],[t("nodes"),countNodes(tree)]].map(x=>'<div class="stat-card"><span>'+escapeHtml(x[0])+'</span><strong>'+escapeHtml(String(x[1]))+'</strong></div>').join("");$("outcomeRows").innerHTML=paths.length?paths.map(p=>'<tr><td>'+escapeHtml(p.labels.join(" → "))+'</td><td>'+ (p.prob===null?"—":p.prob.toFixed(3)+"%")+'</td><td>'+ (p.prob===null?"—":p.prob.toFixed(3)+"%")+'</td></tr>').join(""):'<tr><td colspan="3">'+t("noOutcomes")+'</td></tr>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function addBranch(parentId){
- let p=find(tree,parentId);if(!p)return;snapshot();
- let n=makeNode(id(),lang==="es"?"Nueva opción":"New option",p.children.length?null:100);
- p.children.push(n);
- // In copy/equal modes, keep every sibling option equally weighted as the tree grows.
+ const parent=find(tree,parentId);
+ if(!parent)return;
+ snapshot();
+ const node=makeNode(id(),lang==="es"?"Nueva opción":"New option",parent.children.length?null:100);
+ parent.children.push(node);
+
  if(projectMode==="copy"||projectMode==="equal"){
-  const share=100/p.children.length;
-  p.children.forEach(child=>{child.p=share;child.method="manual"});
+  const share=100/parent.children.length;
+  parent.children.forEach(child=>{child.p=share;child.method="manual"});
  }
- if(projectMode!=="manual"&&p.id!=="root"){
-  const grand=parentOf(tree,p.id);
-  if(grand){
-   grand.children.filter(peer=>peer.id!==p.id).forEach(peer=>{
-    if(peer.children.length===0){
-     peer.children=p.children.map(source=>makeAutoCopy(source,p.children.length));
-    }else if(peer.children.some(child=>child._autoGenerated||child._mirrorSourceId)){
-     p.children.forEach((source,index)=>{
-      let mirror=peer.children.find(child=>child._mirrorSourceId===source.id);
-      if(!mirror&&peer.children[index]&&peer.children[index]._autoGenerated)mirror=peer.children[index];
-      if(!mirror){
-       mirror=makeAutoCopy(source,p.children.length);
-       peer.children.push(mirror);
-      }else{
-       mirror._mirrorSourceId=source.id;
-       if(mirror._autoGenerated){
-        if(projectMode==="copy"){mirror.label=source.label;mirror.p=source.p;mirror.method="manual"}
-        else if(projectMode==="names")mirror.label=source.label;
-        else if(projectMode==="equal"){mirror.p=100/p.children.length;mirror.method="manual"}
-       }
-      }
-     });
-     if(projectMode==="equal"||projectMode==="copy"){
-      const share=100/peer.children.length;
-      peer.children.forEach(child=>{child.p=share;child.method="manual"});
+
+ // Mirror the complete set of child options across every sibling branch,
+ // not only branches that happen to be empty or previously auto-generated.
+ if(projectMode!=="manual"&&parent.id!=="root"){
+  const group=parentOf(tree,parent.id);
+  if(group){
+   const sourceChildren=parent.children;
+   const sourceKeys=sourceChildren.map(child=>child._mirrorSourceId||child.id);
+   group.children.filter(peer=>peer.id!==parent.id).forEach(peer=>{
+    sourceChildren.forEach((source,index)=>{
+     let mirror=peer.children.find(child=>child._mirrorSourceId===sourceKeys[index]);
+     if(!mirror)mirror=peer.children[index];
+     if(!mirror){
+      mirror=makeAutoCopy(source,sourceChildren.length);
+      peer.children.push(mirror);
      }
+     mirror._mirrorSourceId=sourceKeys[index];
+     if(mirror._autoGenerated||!mirror._mirrorSourceId){
+      mirror.label=source.label;
+      mirror._autoGenerated=true;
+     }else if(!mirror._autoGenerated){
+      // Existing options at the same position join the mirrored pattern
+      // when automation is enabled for this project.
+      mirror.label=source.label;
+      mirror._autoGenerated=true;
+     }
+     if(projectMode==="copy"){
+      mirror.p=source.p;
+      mirror.method=source.method||"manual";
+      if(source.method==="data"){mirror.method="data";mirror.favourable=source.favourable;mirror.total=source.total}
+     }else if(projectMode==="equal"){
+      mirror.p=100/sourceChildren.length;
+      mirror.method="manual";
+     }
+    });
+    if(projectMode==="copy"||projectMode==="equal"){
+     const share=100/peer.children.length;
+     peer.children.forEach(child=>{child.p=share;child.method="manual"});
     }
    });
   }
  }
- selected=n.id;render();toast(t("added"))
+ selected=node.id;
+ render();
+ toast(t("added"));
 }
 function makeAutoCopy(source,total){
  const value=probability(source);
  const copy=makeNode(id(),source.label,projectMode==="copy"?value:projectMode==="equal"?100/total:null);
  copy._autoGenerated=true;
- copy._mirrorSourceId=source.id;
+ copy._mirrorSourceId=source._mirrorSourceId||source.id;
  if(projectMode==="copy"&&source.method==="data"){copy.method="data";copy.favourable=source.favourable;copy.total=source.total}
  return copy
 }
@@ -167,15 +183,16 @@ function importData(data){if(!data||!data.tree||!data.tree.id)throw Error("Inval
 function syncAutoGeneratedPeers(source){
  const branch=parentOf(tree,source.id);
  if(!branch)return;
- const grand=parentOf(tree,branch.id);
- if(!grand)return;
+ const group=parentOf(tree,branch.id);
+ if(!group)return;
  const index=branch.children.findIndex(child=>child.id===source.id);
  if(index<0)return;
- grand.children.forEach(peerBranch=>{
+ const sourceKey=source._mirrorSourceId||source.id;
+ group.children.forEach(peerBranch=>{
   if(peerBranch.id===branch.id)return;
-  const target=peerBranch.children.find(child=>child._mirrorSourceId===source.id)||peerBranch.children[index];
+  const target=peerBranch.children.find(child=>child._mirrorSourceId===sourceKey)||peerBranch.children[index];
   if(!target||!target._autoGenerated)return;
-  target._mirrorSourceId=source.id;
+  target._mirrorSourceId=sourceKey;
   if(projectMode==="copy"||projectMode==="names")target.label=source.label;
   if(projectMode==="copy"){
    target.p=source.p;
