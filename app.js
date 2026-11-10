@@ -64,10 +64,28 @@ let patternAnalysisTimer=null,patternAnalysisRun=0;
 function normalizePatternLabel(value){
  return String(value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 }
+function getPatternLearning(){
+ try{return JSON.parse(localStorage.getItem("branch-ai-learning-v1")||"{}")}catch{return {}}
+}
+function recordPatternFeedback(rule,useful){
+ const data=getPatternLearning(),entry=data[rule]||{useful:0,notUseful:0};
+ entry[useful?"useful":"notUseful"]++;
+ data[rule]=entry;
+ try{localStorage.setItem("branch-ai-learning-v1",JSON.stringify(data))}catch{}
+ toast(lang==="es"?"Preferencia aprendida en este navegador":"Preference learned in this browser");
+ schedulePatternAnalysis();
+}
 function analyzeTreePatterns(){
  const findings=[],seen=new Set();
  const add=(key,title,detail,action=null,severity="info",priority=3)=>{
-  if(!seen.has(key)){seen.add(key);findings.push({title,detail,action,severity,priority})}
+  if(!seen.has(key)){
+   seen.add(key);
+   const rule=String(key).split(":")[0];
+   const learned=getPatternLearning()[rule]||{useful:0,notUseful:0};
+   const score=learned.useful-learned.notUseful;
+   if(severity!=="error"&&severity!=="warning"&&learned.notUseful>=learned.useful+3)return;
+   findings.push({key,rule,title,detail,action,severity,priority,learnedScore:score});
+  }
  };
  const groups=[];
  const visit=(node,path=[])=>{
@@ -84,7 +102,7 @@ function analyzeTreePatterns(){
     if(sum>0&&Math.abs(sum-100)>0.01){
      add("sum:"+node.id,lang==="es"?"Distribución que no suma 100 %":"Distribution does not total 100%",
       lang==="es"?"Las opciones de «"+node.label+"» suman "+sum.toFixed(2)+" %. Puedes normalizarlas conservando sus proporciones relativas.":"Options under “"+node.label+"” total "+sum.toFixed(2)+"%. You can normalize them while preserving their relative proportions.",
-      {type:"normalize",nodeId:node.id},"warning",1);
+      children.every(child=>child.method!=="data")?{type:"normalize",nodeId:node.id}:null,"warning",1);
     }
    }else if(vals.some(value=>value===null)){
     const missing=vals.filter(value=>value===null).length;
@@ -142,7 +160,37 @@ function analyzeTreePatterns(){
     lang==="es"?"La ruta más probable es «"+top.labels.slice(1).join(" → ")+"» con "+top.prob.toFixed(2)+" %. La siguiente tiene "+second.prob.toFixed(2)+" %.":"The most likely path is “"+top.labels.slice(1).join(" → ")+"” at "+top.prob.toFixed(2)+"%. The next most likely is "+second.prob.toFixed(2)+"%.",null,"insight",4);
   }
  }
- return findings.sort((a,b)=>a.priority-b.priority);
+ // Additional diagnostics: unreachable branches and information content.
+ groups.forEach(({node,children})=>{
+  const values=children.map(probability);
+  if(values.every(value=>value!==null&&Number.isFinite(value)&&value>=0&&value<=100)){
+   const zeros=children.filter((child,index)=>values[index]===0);
+   if(zeros.length)add("zero:"+node.id,lang==="es"?"Opciones con probabilidad cero":"Zero-probability options",
+    lang==="es"?zeros.map(child=>"«"+child.label+"»").join(", ")+" no pueden ocurrir con los valores actuales. Sus subramas no contribuyen a los resultados.":"With the current values, "+zeros.map(child=>"“"+child.label+"”").join(", ")+" cannot occur. Their descendants contribute nothing to the outcomes.",null,"warning",2);
+   const sum=values.reduce((a,b)=>a+b,0);
+   if(Math.abs(sum-100)<0.01&&children.length>1){
+    const ps=values.filter(value=>value>0).map(value=>value/100);
+    const entropy=-ps.reduce((total,p)=>total+p*Math.log2(p),0);
+    const effective=Math.pow(2,entropy);
+    const max=Math.max(...values);
+    if(max>=85)add("dominance:"+node.id,lang==="es"?"Una opción domina el escenario":"One option dominates the scenario",
+     lang==="es"?"«"+children[values.indexOf(max)].label+"» concentra el "+max.toFixed(1)+" % de la probabilidad de «"+node.label+"». Comprueba si esa diferencia está respaldada por los datos.":"“"+children[values.indexOf(max)].label+"” accounts for "+max.toFixed(1)+"% of “"+node.label+"”. Check that the difference is supported by the data.",null,"insight",4);
+    else if(effective>=children.length*.92&&children.length>=3)add("entropy:"+node.id,lang==="es"?"Distribución muy repartida":"Highly spread distribution",
+     lang==="es"?"La incertidumbre equivale aproximadamente a "+effective.toFixed(1)+" opciones equiprobables de "+children.length+". Ninguna opción destaca claramente.":"The uncertainty is equivalent to about "+effective.toFixed(1)+" equally likely options out of "+children.length+". No option clearly dominates.",null,"insight",5);
+   }
+   const methods=new Set(children.map(child=>child.method==="data"?"data":"manual"));
+   if(methods.size>1)add("mixed:"+node.id,lang==="es"?"Fuentes de probabilidad mezcladas":"Mixed probability sources",
+    lang==="es"?"«"+node.label+"» combina frecuencias (a/b) y porcentajes manuales. Es válido si representan el mismo escenario, pero comprueba que sean comparables.":"“"+node.label+"” mixes observed frequencies (a/b) with manually entered percentages. This is valid only if they describe the same scenario; check comparability.",null,"warning",2);
+  }
+ });
+ // Data sample size context: show only when an observed fraction is based on very few trials.
+ walk(tree,node=>{
+  if(node.method==="data"&&Number.isFinite(Number(node.total))&&Number(node.total)>0&&Number(node.total)<10){
+   add("small-sample:"+node.id,lang==="es"?"Muestra estadística pequeña":"Small statistical sample",
+    lang==="es"?"«"+node.label+"» se basa en "+node.total+" observaciones. La frecuencia "+node.favourable+"/"+node.total+" puede variar mucho con nuevas observaciones; no debe interpretarse como una estimación precisa.":"“"+node.label+"” is based on "+node.total+" observations. The frequency "+node.favourable+"/"+node.total+" may change substantially with more observations; do not treat it as a precise estimate.",null,"warning",3);
+  }
+ });
+ return findings.sort((a,b)=>a.priority-b.priority-(b.learnedScore-a.learnedScore)*0.35);
 }
 function applyPatternAction(action){
  if(action.type==="normalize"){
@@ -216,8 +264,9 @@ function schedulePatternAnalysis(){
   panel.dataset.state="done";
   const actionable=findings.filter(item=>item.action).length;
   status.textContent=findings.length?(lang==="es"?findings.length+" hallazgos relevantes · "+actionable+" acciones disponibles":findings.length+" relevant findings · "+actionable+" available actions"):(lang==="es"?"Sin problemas relevantes detectados":"No relevant issues detected");
-  list.innerHTML=findings.length?findings.map((item,index)=>'<article class="pattern-item pattern-'+item.severity+'"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span>'+(item.action?'<button type="button" class="pattern-apply" data-pattern-action="'+index+'">'+(item.action.type==="normalize"?(lang==="es"?"Normalizar porcentajes":"Normalize probabilities"):(lang==="es"?"Completar estructura":"Complete structure"))+'</button>':'')+'</article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"El árbol no presenta incoherencias relevantes.":"No relevant inconsistencies found in this tree.")+'</div>';
+  list.innerHTML=findings.length?findings.map((item,index)=>'<article class="pattern-item pattern-'+item.severity+'"><strong>'+escapeHtml(item.title)+'</strong><span>'+escapeHtml(item.detail)+'</span>'+(item.action?'<button type="button" class="pattern-apply" data-pattern-action="'+index+'">'+(item.action.type==="normalize"?(lang==="es"?"Normalizar porcentajes":"Normalize probabilities"):(lang==="es"?"Completar estructura":"Complete structure"))+'</button>':'')+((item.severity==="error"||item.severity==="warning")?"":'<div class="pattern-feedback"><button type="button" data-pattern-feedback="'+index+'" data-useful="1">'+(lang==="es"?"Útil":"Useful")+'</button><button type="button" data-pattern-feedback="'+index+'" data-useful="0">'+(lang==="es"?"No útil":"Not useful")+'</button></div>')+'</article>').join(""):'<div class="pattern-placeholder">'+(lang==="es"?"El árbol no presenta incoherencias relevantes.":"No relevant inconsistencies found in this tree.")+'</div>';
   list.querySelectorAll("[data-pattern-action]").forEach(button=>button.addEventListener("click",()=>{const item=findings[Number(button.dataset.patternAction)];if(item&&item.action)applyPatternAction(item.action)}));
+  list.querySelectorAll("[data-pattern-feedback]").forEach(button=>button.addEventListener("click",()=>{const item=findings[Number(button.dataset.patternFeedback)];if(item)recordPatternFeedback(item.rule,button.dataset.useful==="1")}));
  },90);
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
