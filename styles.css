@@ -125,3 +125,8 @@ html[data-theme="dark"] .pattern-item,html[data-theme="dark"] .pattern-placehold
 
 .pattern-apply{align-self:flex-start;margin-top:5px;border:1px solid var(--accent);border-radius:6px;padding:6px 9px;background:var(--accent-soft);color:var(--accent);font:600 10px "DM Sans";cursor:pointer}
 .pattern-apply:hover{filter:brightness(.96)}
+
+.pattern-item.pattern-error{border-left:3px solid #dc6262}
+.pattern-item.pattern-warning{border-left:3px solid #d59b3b}
+.pattern-item.pattern-suggestion{border-left:3px solid var(--accent)}
+.pattern-item.pattern-insight{border-left:3px solid #648bd4}
