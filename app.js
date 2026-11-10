@@ -24,7 +24,15 @@ function id(){return "n"+Math.random().toString(36).slice(2,9)}
 function find(n,key){if(n.id===key)return n;for(const c of n.children){const r=find(c,key);if(r)return r}return null}
 function parentOf(n,key){for(const c of n.children){if(c.id===key)return n;const r=parentOf(c,key);if(r)return r}return null}
 function probability(n){if(n.method==="data"&&n.total>0)return Math.max(0,Math.min(100,100*n.favourable/n.total));return n.p===null?null:Number(n.p)}
-function allPaths(n=tree,path=[],prob=100){if(!n.children.length)return [{labels:path.concat(n.label),prob}];let out=[];for(const c of n.children){let p=probability(c);out=out.concat(allPaths(c,path.concat(n.label),p===null?null:prob===null?null:prob*p/100))}return out}
+function allPaths(n=tree,path=[],nodeIds=[],prob=100){
+ if(!n.children.length)return [{labels:path.concat(n.label),nodeIds:nodeIds.concat(n.id),prob}];
+ let out=[];
+ for(const c of n.children){
+  const p=probability(c);
+  out=out.concat(allPaths(c,path.concat(n.label),nodeIds.concat(n.id),p===null||prob===null?null:prob*p/100));
+ }
+ return out
+}
 function walk(n,fn){fn(n);n.children.forEach(c=>walk(c,fn))}
 function render(){ $("projectName").value=projectName;drawTree();renderInspector();renderValidation();$("branchCount").textContent=countNodes(tree)-1+" "+t("branches");if(view==="stats")renderStats(); }
 function countNodes(n){return 1+n.children.reduce((s,c)=>s+countNodes(c),0)}
@@ -107,7 +115,33 @@ function modal(title,items){$("modalTitle").textContent=title;$("modalBody").inn
 function template(kind){snapshot();if(kind==="coin"){tree=makeNode("root","Dos lanzamientos");let first=makeNode("one","Primer lanzamiento");first.children=[makeNode("a","Cara",50),makeNode("b","Cruz",50)];first.children[0].children=[makeNode("aa","Cara",50),makeNode("ab","Cruz",50)];first.children[1].children=[makeNode("ba","Cara",50),makeNode("bb","Cruz",50)];tree.children=[first]}else if(kind==="weather"){tree=makeNode("root","Previsión");tree.children=[makeNode("sun","Lluvia",30),makeNode("dry","Sin lluvia",70)];tree.children[0].children=[makeNode("rain","Lluvia intensa",20),makeNode("drizzle","Llovizna",80)];}else if(kind==="medical"){tree=makeNode("root","Prueba hipotética");tree.children=[makeNode("pos","Positivo",5),makeNode("neg","Negativo",95)];tree.children[0].children=[makeNode("ill","Condición presente",90),makeNode("healthy","Sin condición",10)];tree.children[1].children=[makeNode("ill2","Condición presente",10),makeNode("healthy2","Sin condición",90)]}else tree=makeNode("root",t("rootLabel"));selected="root";render()}
 function setView(v){view=v;["editorView","statsView","simulationView"].forEach(id=>$(id).hidden=true);$(v+"View").hidden=false;$("pageTitle").textContent=v==="editor"?t("treeEditor"):v==="stats"?t("statistics"):t("simulation");["editorTab","statsTab","simulationTab"].forEach(id=>$(id).classList.toggle("active",id===(v==="editor"?"editorTab":v==="stats"?"statsTab":"simulationTab")));if(v==="stats")renderStats()}
 function localize(){document.documentElement.lang=lang;document.querySelectorAll("[data-i18n]").forEach(el=>{let k=el.dataset.i18n;if(translations[lang][k])el.textContent=t(k)});$("langBtn").textContent=lang.toUpperCase();$("orientationBtn").innerHTML=(orientation==="horizontal"?"↔ ":"↕ ")+t(orientation);render()}
-function simulate(){let n=Number($("iterations").value),counts={};for(let i=0;i<n;i++){let cur=tree,path=[];let guard=0;while(cur.children.length&&guard++<100){let valid=cur.children.map(c=>({c,p:probability(c)})).filter(x=>x.p!==null&&x.p>=0);let sum=valid.reduce((s,x)=>s+x.p,0);if(!valid.length||sum<=0)break;let r=Math.random()*sum,chosen=valid[valid.length-1];for(let x of valid){r-=x.p;if(r<=0){chosen=x;break}}cur=chosen.c;path.push(cur.label)}let key=path.join(" → ")||"—";counts[key]=(counts[key]||0)+1}let paths=allPaths();$("simulationResults").innerHTML=Object.keys(counts).map(k=>{let theoretical=paths.find(p=>p.labels.slice(1).join(" → ")===k);return '<div class="sim-row"><span>'+escapeHtml(k)+'</span><span>'+((counts[k]/n*100).toFixed(2))+'% <small class="muted">('+((theoretical&&theoretical.prob!==null)?theoretical.prob.toFixed(2):"—")+'% '+t("theoretical")+' )</small></span></div>'}).join("")+'<p class="muted">'+n.toLocaleString()+' '+t("repetitions").toLowerCase()+'</p>';lastSimulation=counts}
+function simulate(){
+ const n=Math.max(1,Number($("iterations").value)||1000),counts={};
+ const pathLabels={},pathIds={};
+ for(let i=0;i<n;i++){
+  let cur=tree,labels=[],ids=[],guard=0;
+  while(cur.children.length&&guard++<100){
+   const valid=cur.children.map(c=>({c,p:probability(c)})).filter(x=>x.p!==null&&Number.isFinite(x.p)&&x.p>=0);
+   const sum=valid.reduce((s,x)=>s+x.p,0);
+   if(!valid.length||sum<=0)break;
+   let r=Math.random()*sum,chosen=valid[valid.length-1];
+   for(const x of valid){r-=x.p;if(r<0){chosen=x;break}}
+   cur=chosen.c;labels.push(cur.label);ids.push(cur.id);
+  }
+  const key=ids.join("/");
+  counts[key]=(counts[key]||0)+1;
+  pathLabels[key]=labels.join(" → ")||"—";
+  pathIds[key]=ids;
+ }
+ const theoreticalByPath=new Map(allPaths().map(p=>[p.nodeIds.slice(1).join("/"),p]));
+ $("simulationResults").innerHTML=Object.keys(counts).map(key=>{
+  const theoretical=theoreticalByPath.get(key);
+  const observed=(counts[key]/n*100).toFixed(2);
+  const expected=theoretical&&theoretical.prob!==null?theoretical.prob.toFixed(2):"—";
+  return '<div class="sim-row"><span>'+escapeHtml(pathLabels[key])+'</span><span>'+observed+'% <small class="muted">('+expected+'% '+t("theoretical")+' )</small></span></div>';
+ }).join("")+'<p class="muted">'+n.toLocaleString()+' '+t("repetitions").toLowerCase()+'</p>';
+ lastSimulation=counts
+}
 function importData(data){if(!data||!data.tree||!data.tree.id)throw Error("Invalid");snapshot();tree=data.tree;projectName=data.projectName||"Imported project";orientation=data.orientation||"horizontal";projectMode=data.projectMode||"manual";selected="root";render();renderProjectMode()}
 $("nodeLabel").addEventListener("input",e=>{let n=find(tree,selected);if(n){n.label=e.target.value;drawTree();renderValidation()}});
 $("nodeNotes").addEventListener("input",e=>{let n=find(tree,selected);if(n)n.notes=e.target.value});
