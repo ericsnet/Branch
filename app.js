@@ -51,7 +51,7 @@ function describeAIError(error){
  const raw=String(error&&error.message||error||"Error desconocido");
  if(/Failed to fetch|NetworkError|CORS/i.test(raw))return lang==="es"?"No se pudo conectar desde el navegador. Puede ser un bloqueo CORS de OpenCode Go o un problema de red.":"Browser connection failed. This may be an OpenCode Go CORS restriction or a network issue.";
  if(/401|unauthorized|invalid.*key/i.test(raw))return lang==="es"?"OpenCode Go ha rechazado la API Key (401). Comprueba que sea correcta.":"OpenCode Go rejected the API key (401). Check that it is correct.";
- if(/403|forbidden|FreeTier|free tier/i.test(raw))return lang==="es"?"OpenCode Go ha rechazado la solicitud (403). El acceso gratuito puede estar limitado a OpenCode y no permitir aplicaciones externas.":"OpenCode Go rejected the request (403). Free access may be restricted to OpenCode and unavailable to external apps.";
+ if(/403|forbidden|FreeTier|free tier/i.test(raw))return lang==="es"?"OpenCode Go ha rechazado la solicitud (403). Comprueba que la clave sea una API Key de Go activa y que tu cuenta tenga acceso al modelo.":"OpenCode Go rejected the request (403). Check that the key is an active Go API key and that your account can access this model.";
  if(/429|rate limit|limit exceeded/i.test(raw))return lang==="es"?"Se ha alcanzado el límite de uso del modelo. Inténtalo más tarde.":"The model usage limit has been reached. Try again later.";
  return raw.slice(0,500);
 }
