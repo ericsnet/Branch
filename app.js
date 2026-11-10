@@ -46,6 +46,7 @@ function addBranch(parentId){
  let p=find(tree,parentId);if(!p)return;snapshot();
  let n=makeNode(id(),lang==="es"?"Nueva opción":"New option",p.children.length?null:50);
  n.p=p.children.length?null:50;p.children.push(n);
+ if(projectMode==="equal")p.children.forEach(child=>{child.p=100/p.children.length;child.method="manual"});
  if(projectMode!=="manual"&&p.id!=="root"){
   const grand=parentOf(tree,p.id);
   if(grand){
